@@ -34,11 +34,16 @@ jobs:
           git clone -n https://github.com/valleybell/libvgm
           cd libvgm
           git checkout 5fe3883a
+
+          # Patch CMakeLists.txt to work with modern CMake
+          sed -i 's/cmake_minimum_required(VERSION 2.8)/cmake_minimum_required(VERSION 3.5)/' CMakeLists.txt
+
           mkdir build
           cd build
           cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
           make
           make install
+
 
       - name: init-submodules
         run: |
