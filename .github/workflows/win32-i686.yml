@@ -37,9 +37,7 @@ jobs:
       shell: msys2 {0}
       run: |
         mkdir -p build && cd build
-        cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release \
-          -DOPENGL_gl_LIBRARY=/mingw64/lib/libopengl32.a \
-          -DOPENGL_INCLUDE_DIR=/mingw64/include
+        cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DOPENGL_gl_LIBRARY=/mingw64/lib/libopengl32.a -DOPENGL_INCLUDE_DIR=/mingw64/include
 
     - name: Build project
       shell: msys2 {0}
