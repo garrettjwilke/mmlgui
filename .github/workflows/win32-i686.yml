@@ -41,6 +41,10 @@ jobs:
         cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release \
           -DOPENGL_gl_LIBRARY=/mingw64/lib/libopengl32.a \
           -DOPENGL_INCLUDE_DIR=/mingw64/include
+    - name: Patch CMake version in libvgm
+      shell: bash
+      run: |
+        sed -i 's/cmake_minimum_required(VERSION 2.8)/cmake_minimum_required(VERSION 3.11)/' libvgm/CMakeLists.txt
 
     - name: Build project
       shell: msys2 {0}
