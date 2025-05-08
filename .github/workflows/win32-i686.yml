@@ -33,12 +33,6 @@ jobs:
           mingw-w64-x86_64-mesa
           mingw-w64-x86_64-libao
 
-    - name: Update CMake to version 3.5 or later
-      shell: msys2 {0}
-      run: |
-        pacman -Syu
-        pacman -S mingw-w64-x86_64-cmake
-
     - name: Configure with CMake
       shell: msys2 {0}
       run: |
