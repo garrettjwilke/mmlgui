@@ -32,7 +32,7 @@ jobs:
           mingw-w64-x86_64-cppunit
           mingw-w64-x86_64-mesa
           mingw-w64-x86_64-libao
-          mingw-w64-x86_64-zlib  # Install ZLIB
+          mingw-w64-x86_64-zlib
 
     - name: Configure with CMake
       shell: msys2 {0}
