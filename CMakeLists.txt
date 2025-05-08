@@ -8,6 +8,11 @@ pkg_check_modules(GLFW3 REQUIRED glfw3)
 pkg_check_modules(CPPUNIT cppunit)
 
 if(MINGW)
+  set(OPENGL_gl_LIBRARY /mingw64/lib/libopengl32.a)
+  set(OPENGL_INCLUDE_DIR /mingw64/include)
+endif()
+
+if(MINGW)
 	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" ON)
 	if(LINK_STATIC_LIBS)
 		set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
