@@ -30,6 +30,7 @@ jobs:
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-glfw
           mingw-w64-x86_64-cppunit
+          mingw-w64-x86_64-opengl
           mingw-w64-x86_64-libao
 
     - name: Configure with CMake
