@@ -1,60 +1,58 @@
-name: Win32 i686
+name: Windows Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: >-
-            base-devel
-            git
-            mingw-w64-i686-toolchain
-            mingw-w64-i686-glfw
-            mingw-w64-i686-cppunit
-            mingw-w64-i686-cmake
-
-      - name: build-libvgm
-        run: |
-          git clone -n https://github.com/valleybell/libvgm
-          cd libvgm
-          git checkout 5fe3883a
-
-          # Patch CMakeLists.txt to work with modern CMake
-          sed -i 's/cmake_minimum_required(VERSION 2.8)/cmake_minimum_required(VERSION 3.5)/' CMakeLists.txt
-
-          mkdir build
-          cd build
-          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >-
+          base-devel
+          git
           make
-          make install
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-glfw
+          mingw-w64-x86_64-libao
 
+    - name: Install libvgm
+      shell: msys2 {0}
+      run: |
+        git clone https://github.com/vgmrips/libvgm.git
+        cd libvgm
+        mkdir build && cd build
+        cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw64
+        make
+        make install
 
-      - name: init-submodules
-        run: |
-          git submodule update --init --recursive
+    - name: Build mmlgui
+      shell: msys2 {0}
+      run: |
+        make RELEASE=1
 
-      - name: make
-        run: |
-          make bin/mmlgui RELEASE=1
+    - name: Prepare artifact
+      shell: bash
+      run: |
+        mkdir -p artifact
+        cp bin/mmlgui.exe artifact/ || cp bin/mmlgui artifact/
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary
-          path: bin/mmlgui.exe
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: mmlgui-windows
+        path: artifact/*
