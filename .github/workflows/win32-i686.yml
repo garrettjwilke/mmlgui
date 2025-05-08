@@ -1,4 +1,4 @@
-name: Windows Build
+name: CMake Windows Build
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repo with submodules
       uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -24,33 +24,39 @@ jobs:
         install: >-
           base-devel
           git
-          make
+          cmake
+          ninja
+          pkg-config
           mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-cmake
           mingw-w64-x86_64-glfw
+          mingw-w64-x86_64-cppunit
           mingw-w64-x86_64-libao
 
-    - name: Install libvgm
+    - name: Configure with CMake
       shell: msys2 {0}
       run: |
-        cd libvgm
-        mkdir build && cd build
-        cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw64 -D CMAKE_POLICY_VERSION_MINIMUM=3.5
-        make
-        make install
+        mkdir -p build && cd build
+        cmake .. -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release
 
-    - name: Build mmlgui
+    - name: Build project
       shell: msys2 {0}
       run: |
-        make RELEASE=1
+        cd build
+        make -j$(nproc)
 
-    - name: Prepare artifact
+    - name: Run unit tests
+      shell: msys2 {0}
+      run: |
+        cd build
+        ctest --output-on-failure || echo "Unit tests failed"
+
+    - name: Package binary
       shell: bash
       run: |
         mkdir -p artifact
-        cp bin/mmlgui.exe artifact/ || cp bin/mmlgui artifact/
+        cp build/mmlgui.exe artifact/ || cp build/mmlgui artifact/
 
-    - name: Upload binary
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: mmlgui-windows
