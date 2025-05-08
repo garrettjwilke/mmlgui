@@ -36,7 +36,7 @@ jobs:
       shell: msys2 {0}
       run: |
         mkdir -p build && cd build
-        cmake .. -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release
+        cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project
       shell: msys2 {0}
