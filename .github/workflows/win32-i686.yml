@@ -1,12 +1,3 @@
-name: CMake Windows Build2
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
 jobs:
   build:
     runs-on: windows-latest
@@ -32,6 +23,12 @@ jobs:
           mingw-w64-x86_64-cppunit
           mingw-w64-x86_64-mesa
           mingw-w64-x86_64-libao
+
+    - name: Update CMake to version 3.5 or later
+      shell: msys2 {0}
+      run: |
+        pacman -Syu
+        pacman -S mingw-w64-x86_64-cmake
 
     - name: Configure with CMake
       shell: msys2 {0}
