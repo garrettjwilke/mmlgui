@@ -33,7 +33,6 @@ jobs:
     - name: Install libvgm
       shell: msys2 {0}
       run: |
-        git clone https://github.com/vgmrips/libvgm.git
         cd libvgm
         mkdir build && cd build
         cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw64
