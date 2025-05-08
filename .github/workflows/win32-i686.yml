@@ -35,7 +35,7 @@ jobs:
       run: |
         cd libvgm
         mkdir build && cd build
-        cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw64
+        cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw64 -D CMAKE_POLICY_VERSION_MINIMUM=3.5
         make
         make install
 
