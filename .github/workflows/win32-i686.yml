@@ -38,7 +38,7 @@ jobs:
       shell: msys2 {0}
       run: |
         mkdir -p build && cd build
-        cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release \
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release \
           -DOPENGL_gl_LIBRARY=/mingw64/lib/libopengl32.a \
           -DOPENGL_INCLUDE_DIR=/mingw64/include
     - name: Patch CMake version in libvgm
