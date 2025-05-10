@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: # Enables manual triggering from the Actions tab
 
 jobs:
   build:
@@ -16,25 +17,13 @@ jobs:
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
-      # You can specify the architecture if needed, e.g.,
-      # with:
-      #   arch: x64
 
-    - name: Install dependencies
-      run: |
-        # You might need to install vcpkg and integrate it with CMake
-        # For example:
-        # choco install vcpkg --confirm
-        # vcpkg integrate install
-
-        # Install necessary packages using vcpkg (if you use it)
-        # vcpkg install glfw3 cppunit glew # If GLEW is needed by imgui-opengl3
-
-        # Alternatively, if you have pre-built libraries or other methods:
-        echo "Installing or locating dependencies..."
-        # This step will depend heavily on how you manage your dependencies.
-        # Consider using vcpkg, Conan, or providing pre-built binaries.
-        # For GLFW, you might download a pre-built binary and extract it.
+    - name: Install vcpkg
+      uses: lukka/run-vcpkg@v4
+      with:
+        vcpkgRoot: ${{ github.workspace }}/vcpkg
+        appendedVcpkgTriplet: x64-windows # Or x86-windows if needed
+        vcpkgPackages: glfw3 cppunit
 
     - name: Configure CMake
       shell: bash
@@ -43,10 +32,7 @@ jobs:
         cd build
         cmake .. -G "Visual Studio 17 2022" -A x64 \
           -DCMAKE_BUILD_TYPE=Release \
-          -DGLFW3_DIR="path/to/glfw3/cmake/folder" # Adjust this path
-        # If you are using vcpkg, CMake should automatically find GLFW3.
-        # If not, you might need to point CMake to the GLFW3 installation.
-        # Similarly for CPPUNIT if not found automatically.
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
     - name: Build
       run: |
