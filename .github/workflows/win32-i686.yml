@@ -40,7 +40,7 @@ jobs:
         cmake --build . --config Release
 
     - name: Upload artifacts (optional)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mmlgui-windows
         path: build/Release/mmlgui.exe # Adjust the path to your executable
