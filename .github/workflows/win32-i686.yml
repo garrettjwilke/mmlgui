@@ -1,47 +1,60 @@
-name: Win32 i686
+name: Build MMLGUI (Windows)
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ master ]
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: base-devel git mingw-w64-i686-toolchain mingw-w64-i686-glfw mingw-w64-i686-cppunit mingw-w64-i686-cmake
-      - name: build-libvgm
-        run: |
-          git clone -n https://github.com/valleybell/libvgm
-          cd libvgm
-          git checkout 5fe3883a
-          mkdir build
-          cd build
-          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
-          make
-          make install
-      - name: init-submodules
-        run: |
-          git submodule update --init --recursive
-# cppunit doesn't play nice with github's win32 environment so this is skipped
-# for now
-#     - name: run-unittests
-#       run: |
-#       make test RELEASE=1
-      - name: make
-        run: |
-          make bin/mmlgui RELEASE=1
-      - uses: actions/upload-artifact@v3
-        with:
-          name: binary
-          path: bin/mmlgui.exe
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1
+      # You can specify the architecture if needed, e.g.,
+      # with:
+      #   arch: x64
+
+    - name: Install dependencies
+      run: |
+        # You might need to install vcpkg and integrate it with CMake
+        # For example:
+        # choco install vcpkg --confirm
+        # vcpkg integrate install
+
+        # Install necessary packages using vcpkg (if you use it)
+        # vcpkg install glfw3 cppunit glew # If GLEW is needed by imgui-opengl3
+
+        # Alternatively, if you have pre-built libraries or other methods:
+        echo "Installing or locating dependencies..."
+        # This step will depend heavily on how you manage your dependencies.
+        # Consider using vcpkg, Conan, or providing pre-built binaries.
+        # For GLFW, you might download a pre-built binary and extract it.
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 17 2022" -A x64 \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DGLFW3_DIR="path/to/glfw3/cmake/folder" # Adjust this path
+        # If you are using vcpkg, CMake should automatically find GLFW3.
+        # If not, you might need to point CMake to the GLFW3 installation.
+        # Similarly for CPPUNIT if not found automatically.
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release
+
+    - name: Upload artifacts (optional)
+      uses: actions/upload-artifact@v3
+      with:
+        name: mmlgui-windows
+        path: build/Release/mmlgui.exe # Adjust the path to your executable
