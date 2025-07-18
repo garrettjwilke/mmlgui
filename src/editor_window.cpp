@@ -894,7 +894,7 @@ void Editor_Window::parse_fm_params_from_mml() {
         std::istringstream stream(match[0]);
 		std::string line;
 		std::string header;
-		std::getline(stream, header); // First line: "@1 fm 4 3"
+		std::getline(stream, header); // First line: "@1 fm"
 		std::istringstream headerStream(header);
 
 		std::string atToken, fmToken;
@@ -909,14 +909,13 @@ void Editor_Window::parse_fm_params_from_mml() {
             int param_index = 0;
 
             while (std::getline(linestream, value, ',') && param_index < 10) {
-                // Trim whitespace (optional, but safe)
                 value.erase(0, value.find_first_not_of(" \t"));
                 value.erase(value.find_last_not_of(" \t") + 1);
 
                 try {
                     fm_params[op][param_index] = std::stoi(value);
                 } catch (...) {
-                    fm_params[op][param_index] = 0; // fallback on invalid value
+                    fm_params[op][param_index] = 0;
                 }
 
                 ++param_index;
