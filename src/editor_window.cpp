@@ -337,7 +337,7 @@ void Editor_Window::display()
 		if (changed)
 		{
 			std::ostringstream instrument_string;
-			instrument_string << "@" << instrument_num << " fm " << fm_alg << " " << fm_feedback << " ; ch1\n";
+			instrument_string << "@" << instrument_num << " fm " << fm_alg << " " << fm_feedback << " ; \n";
 			for (int op = 0; op < 4; ++op)
 			{
 				for (int p = 0; p < 10; ++p)
