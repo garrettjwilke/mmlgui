@@ -27,7 +27,7 @@ private:
     int fm_alg;
     int fm_feedback;
     std::array<std::array<int, 10>, 4> fm_params;
-    std::string fm_inst_name;
+    std::string fm_instrument_name;
 };
 
 #endif // FM_EDITOR_WINDOW_H

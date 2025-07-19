@@ -14,6 +14,7 @@ void FM_Editor_Window::display(TextEditor& editor) {
 
     if (ImGui::Begin("FM Instrument Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         bool changed = false;
+
         static int prev_instrument_num = -1;
         ImGui::InputInt("Instrument #", &instrument_num);
         if (instrument_num < 1) instrument_num = 1;
@@ -22,6 +23,14 @@ void FM_Editor_Window::display(TextEditor& editor) {
             parse_fm_params_from_mml(editor.GetText(), instrument_num);
         }
         ImGui::Spacing();
+        char fm_instrument_name_buffer[128];
+        std::strncpy(fm_instrument_name_buffer, fm_instrument_name.c_str(), sizeof(fm_instrument_name_buffer));
+        fm_instrument_name_buffer[sizeof(fm_instrument_name_buffer) - 1] = '\0'; // Ensure null-termination
+
+        if (ImGui::InputText("Instrument Name", fm_instrument_name_buffer, sizeof(fm_instrument_name_buffer))) {
+            fm_instrument_name = fm_instrument_name_buffer;
+            changed = true;
+        }
         ImGui::Separator();
         ImGui::Spacing();
         changed |= ImGui::InputInt("Algorithm", &fm_alg);
@@ -32,7 +41,7 @@ void FM_Editor_Window::display(TextEditor& editor) {
         if (fm_feedback > 7) fm_feedback = 7;
 
         ImGui::Spacing();
-        ImGui::Separator();
+        //ImGui::Separator();
         ImGui::Spacing();
         const char* labels[10] = {
             "AR", "DR", "SR", "RR", "SL", "TL", "KS", "ML", "DT", "SSG"
@@ -93,9 +102,21 @@ void FM_Editor_Window::parse_fm_params_from_mml(const std::string& mml, int inst
     }
 
     if (block_lines.size() >= 6) { // 1 header + 4 ops + end marker
-        std::istringstream headerStream(block_lines[0]);
+        std::string header_line = block_lines[0];
         std::string atToken, fmToken;
+
+        std::istringstream headerStream(header_line);
         headerStream >> atToken >> fmToken >> fm_alg >> fm_feedback;
+
+        std::string remaining;
+        std::getline(headerStream, remaining);  // Rest of line after fm_feedback
+        size_t semicolon_pos = remaining.find(';');
+        if (semicolon_pos != std::string::npos) {
+            fm_instrument_name= remaining.substr(semicolon_pos + 1);
+            fm_instrument_name.erase(0, fm_instrument_name.find_first_not_of(" \t")); // trim
+        } else {
+            fm_instrument_name.clear();
+        }
 
         for (int op = 0; op < 4; ++op) {
             std::istringstream linestream(block_lines[1 + op]);
@@ -121,12 +142,18 @@ void FM_Editor_Window::parse_fm_params_from_mml(const std::string& mml, int inst
             for (int p = 0; p < 10; ++p)
                 fm_params[op][p] = 0;
     }
+
 }
 
 
 void FM_Editor_Window::write_fm_params_to_mml(TextEditor& editor, int instrument_num) {
     std::ostringstream instrument_string;
-    instrument_string << "@" << instrument_num << " fm " << fm_alg << " " << fm_feedback << " ;\n";
+    instrument_string << "@" << instrument_num << " fm " << fm_alg << " " << fm_feedback;
+    if (!fm_instrument_name.empty()) {
+        instrument_string << " ; " << fm_instrument_name;
+    }
+    instrument_string << "\n";
+
     for (int op = 0; op < 4; ++op) {
         for (int p = 0; p < 10; ++p) {
             instrument_string << (p == 0 ? " " : "") << std::setw(3) << std::right << fm_params[op][p];
@@ -134,7 +161,7 @@ void FM_Editor_Window::write_fm_params_to_mml(TextEditor& editor, int instrument
         }
         instrument_string << "\n";
     }
-    instrument_string << "; -- end FM\n";
+    instrument_string << ";endFM\n";
 
     std::string mml = editor.GetText();
     std::istringstream mml_stream(mml);
@@ -144,7 +171,7 @@ void FM_Editor_Window::write_fm_params_to_mml(TextEditor& editor, int instrument
     bool replaced = false;
     bool inserted = false;
     std::string start_marker = "@" + std::to_string(instrument_num) + " fm";
-    std::string end_marker = "; -- end FM";
+    std::string end_marker = ";endFM";
 
     // Track all existing FM instrument headers with their line positions
     std::vector<std::pair<int, int>> instrument_blocks; // {instrument_num, insert_pos}
@@ -182,7 +209,7 @@ void FM_Editor_Window::write_fm_params_to_mml(TextEditor& editor, int instrument
     // Check if we're replacing an existing block
     for (const auto& [num, pos] : instrument_blocks) {
         if (num == instrument_num) {
-            // Replace the block from @N to ; -- end FM
+            // Replace the block from @N to ;endFM
             size_t start_idx = 0;
             for (; start_idx < lines.size(); ++start_idx) {
                 std::string trimmed = lines[start_idx];
