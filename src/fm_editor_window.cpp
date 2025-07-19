@@ -6,6 +6,8 @@ FM_Editor_Window::FM_Editor_Window()
     : instrument_num(1), fm_alg(0), fm_feedback(0), fm_params{} {}
 
 void FM_Editor_Window::display(TextEditor& editor) {
+    const int param_min[10] = {  0,  0,  0,  0,  0,   0,  0,  0,  0,   0 };
+    const int param_max[10] = { 31, 31, 31, 15, 15, 127, 3, 15, 7,  15 };
     ImGui::SetNextWindowPos(ImVec2(800, 100), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
 
@@ -40,7 +42,7 @@ void FM_Editor_Window::display(TextEditor& editor) {
                 ImGui::NewLine();
 
             ImGui::BeginGroup();
-            ImGui::Text("     - Operator %d -", op + 1);
+            ImGui::Text("        - Operator %d -", op + 1);
 
             for (int i = 0; i < 10; ++i) {
                 ImGui::PushID(op * 10 + i);
@@ -51,7 +53,8 @@ void FM_Editor_Window::display(TextEditor& editor) {
                 }
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(150);
-                changed |= ImGui::SliderInt("", &fm_params[op][i], 0, 127);
+                //changed |= ImGui::SliderInt("", &fm_params[op][i], 0, 127);
+                changed |= ImGui::SliderInt("", &fm_params[op][i], param_min[i], param_max[i]);
                 ImGui::PopID();
             }
             ImGui::EndGroup();
