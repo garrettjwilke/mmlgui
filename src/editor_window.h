@@ -74,11 +74,8 @@ class Editor_Window : public Window
 		uint32_t line_pos;
 		uint32_t cursor_pos;
 
-		FM_Editor_Window fm_editor_window;
-
 		// FM Instrument Editor state
-		//int fm_alg = 0;
-    	//int fm_feedback = 0;
+		FM_Editor_Window fm_editor_window;
 		int instrument_num = 1;
 		int current_operator = 0;
 
