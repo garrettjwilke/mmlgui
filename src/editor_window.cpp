@@ -21,6 +21,8 @@
 #include "editor_window.h"
 #include "track_view_window.h"
 #include "track_list_window.h"
+//#include "fm_editor_window.h"
+
 
 #include "dmf_importer.h"
 
@@ -48,6 +50,7 @@ enum Flags
 
 Editor_Window::Editor_Window()
 	: editor()
+	, fm_editor_window()
 	, filename(default_filename)
 	, flag(RECOMPILE)
 	, line_pos(0)
@@ -62,15 +65,14 @@ void Editor_Window::display()
 {
 	bool keep_open = true;
 
-	if(test_flag(RECOMPILE))
-	{
-		if(!song_manager->get_compile_in_progress())
-		{
-			if(!song_manager->compile(editor.GetText(), filename))
-				//parse_fm_params_from_mml();
-				clear_flag(RECOMPILE);
-		}
-	}
+	if (test_flag(RECOMPILE)) {
+        if (!song_manager->get_compile_in_progress()) {
+            if (!song_manager->compile(editor.GetText(), filename)) {
+                fm_editor_window.parse_fm_params_from_mml(editor.GetText(), fm_editor_window.get_instrument_num());
+                clear_flag(RECOMPILE);
+            }
+        }
+    }
 
 	std::string window_id;
 	window_id = get_display_filename();
@@ -268,114 +270,18 @@ void Editor_Window::display()
 	ImGui::SetNextWindowPos(ImVec2(800, 100), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(300, 400), ImGuiCond_FirstUseEver);
 
-	if (ImGui::Begin("FM Instrument Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		bool changed = false;
-		static int prev_instrument_num = -1;
-		ImGui::InputInt("Instrument #", &instrument_num);
-		if (instrument_num < 1) instrument_num = 1;
-		if (instrument_num != prev_instrument_num) {
-			prev_instrument_num = instrument_num;
-			parse_fm_params_from_mml();  // update sliders from new instrument
-		}
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
-		changed |= ImGui::InputInt("Algorithm", &fm_alg);
-		changed |= ImGui::InputInt("Feedback", &fm_feedback);
-		if (fm_alg < 0) fm_alg = 0;
-		if (fm_alg > 7) fm_alg = 7;
-		if (fm_feedback < 0) fm_feedback = 0;
-		if (fm_feedback > 7) fm_feedback = 7;
+	fm_editor_window.display(editor);
 
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
-		const char* labels[10] = {
-			"AR", "DR", "SR", "RR", "SL", "TL", "KS", "ML", "DT", "SSG"
-		};
-
-		//bool changed = false;
-
-		for (int op = 0; op < 4; ++op)
-		{
-			// New row after every 2 operators
-			if (op > 0 && op % 2 == 0)
-				ImGui::NewLine();
-
-			ImGui::BeginGroup();
-
-			ImGui::Text("     - Operator %d -", op + 1);
-			//ImGui::Separator();  // Separator line below operator label
-
-			for (int i = 0; i < 10; ++i)
-			{
-				ImGui::PushID(op * 10 + i);
-
-				// Label on the left
-				if (labels[i] == "SSG") {
-					ImGui::Text("%s", labels[i]);
-				}
-				else {
-					ImGui::Text("%s ", labels[i]);
-				}
-				ImGui::SameLine();
-
-				// Set width for slider to keep layout neat
-				ImGui::SetNextItemWidth(150);
-				changed |= ImGui::SliderInt("", &fm_params[op][i], 0, 127);
-
-				ImGui::PopID();
-			}
-
-			ImGui::EndGroup();
-
-			if (op % 2 == 0)
-				ImGui::SameLine();
-		}
-
-		if (changed)
-		{
-			std::ostringstream instrument_string;
-			instrument_string << "@" << instrument_num << " fm " << fm_alg << " " << fm_feedback << " ; \n";
-			for (int op = 0; op < 4; ++op)
-			{
-				for (int p = 0; p < 10; ++p)
-				{
-					// the instrument is invalid if the first number does not have a space
-					if (p == 0) {
-						instrument_string << " " << std::setw(3) << std::right << fm_params[op][p];
-					}
-					else {
-						instrument_string << std::setw(3) << std::right << fm_params[op][p];
-					}
-					
-					if (p < 9)
-						instrument_string << ",";
-				}
-				instrument_string << "\n";
-			}
-			instrument_string << "\n";
-
-			std::string new_block = instrument_string.str();
-			std::string mml = editor.GetText();
-
-			std::regex pattern("@" + std::to_string(instrument_num) + "\\s+fm[^@]*", std::regex_constants::icase);
-			std::smatch match;
-			if (std::regex_search(mml, match, pattern))
-			{
-				mml.replace(match.position(0), match.length(0), new_block);
-			}
-			else
-			{
-				mml = new_block + "\n" + mml;
-			}
-
-			editor.SetText(mml);
-			set_flag(MODIFIED | RECOMPILE);
-		}
-	}
-	ImGui::End();
+	/*
+	static bool prev_changed = false;
+    bool current_changed = false; // This should be set based on changes in the FM editor window
+    if (current_changed && !prev_changed) {
+        std::string mml = editor.GetText();
+        fm_editor_window.write_fm_params_to_mml(mml, fm_editor_window.get_instrument_num());
+        editor.SetText(mml);
+    }
+    prev_changed = current_changed;
+	*/
 
 	if(!keep_open)
 		close_request_all();
@@ -536,7 +442,7 @@ void Editor_Window::handle_file_io()
 
 			song_manager->reset_mute();
 			song_manager->stop();
-			parse_fm_params_from_mml();
+			fm_editor_window.parse_fm_params_from_mml(editor.GetText(), instrument_num);
 		}
 	}
 	// open dialog requested
@@ -639,7 +545,7 @@ int Editor_Window::load_file(const char* fn)
 
 		song_manager->stop();
 		song_manager->reset_mute();
-		parse_fm_params_from_mml();
+		fm_editor_window.parse_fm_params_from_mml(editor.GetText(), instrument_num);
 		return 0;
 	}
 	return -1;
@@ -654,7 +560,7 @@ int Editor_Window::import_file(const char* fn)
 		clear_flag(MODIFIED);
 		set_flag(FILENAME_SET|RECOMPILE);
 		editor.InsertText(t.get_mml());
-		parse_fm_params_from_mml();
+		fm_editor_window.parse_fm_params_from_mml(editor.GetText(), instrument_num);
 		return 0;
 	}
 	return -1;
@@ -877,59 +783,3 @@ void Editor_Window::show_export_menu()
 	}
 }
 
-void Editor_Window::parse_fm_params_from_mml() {
-	//int fm_alg = 0;       // algorithm
-	//int fm_feedback = 0;  // feedback level
-
-    std::string mml = editor.GetText();
-
-    // Regex to match @N fm ... with up to 10 lines of parameters
-    std::regex pattern(
-        "@" + std::to_string(instrument_num) + R"( +fm +\d+ +\d+[^\@]*)",
-        std::regex_constants::icase
-    );
-
-    std::smatch match;
-    if (std::regex_search(mml, match, pattern)) {
-        std::istringstream stream(match[0]);
-		std::string line;
-		std::string header;
-		std::getline(stream, header); // First line: "@1 fm"
-		std::istringstream headerStream(header);
-
-		std::string atToken, fmToken;
-		headerStream >> atToken >> fmToken >> fm_alg >> fm_feedback;
-        //std::getline(stream, line); // Skip comment line
-
-        for (int op = 0; op < 4; ++op) {
-            if (!std::getline(stream, line)) break;
-
-            std::istringstream linestream(line);
-            std::string value;
-            int param_index = 0;
-
-            while (std::getline(linestream, value, ',') && param_index < 10) {
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                try {
-                    fm_params[op][param_index] = std::stoi(value);
-                } catch (...) {
-                    fm_params[op][param_index] = 0;
-                }
-
-                ++param_index;
-            }
-
-            // If fewer than 10 values were provided, zero-fill the rest
-            while (param_index < 10) {
-                fm_params[op][param_index++] = 0;
-            }
-        }
-    } else {
-        // No block found, reset all params
-        for (int op = 0; op < 4; ++op)
-            for (int p = 0; p < 10; ++p)
-                fm_params[op][p] = 0;
-    }
-}

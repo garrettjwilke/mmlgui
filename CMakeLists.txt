@@ -57,7 +57,8 @@ add_executable(mmlgui
 	src/emu_player.cpp
 	src/config_window.cpp
 	src/dmf_importer.cpp
-	src/miniz.c)
+	src/miniz.c
+	src/fm_editor_window.cpp)
 
 target_link_libraries(mmlgui PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
 target_compile_definitions(mmlgui PRIVATE -DLOCAL_LIBVGM)

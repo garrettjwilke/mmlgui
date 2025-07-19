@@ -9,6 +9,7 @@
 
 #include "window.h"
 #include "song_manager.h"
+#include "fm_editor_window.h"
 
 class Editor_Window : public Window
 {
@@ -73,18 +74,14 @@ class Editor_Window : public Window
 		uint32_t line_pos;
 		uint32_t cursor_pos;
 
+		FM_Editor_Window fm_editor_window;
+
 		// FM Instrument Editor state
-		void parse_fm_params_from_mml();
-		int fm_alg = 0;
-    	int fm_feedback = 0;
+		//int fm_alg = 0;
+    	//int fm_feedback = 0;
 		int instrument_num = 1;
 		int current_operator = 0;
-		int fm_params[4][10] = {
-			{10, 10, 5, 5, 8, 50, 0, 3, 0, 0},
-			{8,  8,  3, 5, 6, 40, 0, 1, 0, 0},
-			{8,  8,  2, 5, 6, 20, 0, 1, 0, 0},
-			{10, 10, 6, 6, 5,  0, 0, 1, 0, 0}
-		};
+
 };
 
 #endif
