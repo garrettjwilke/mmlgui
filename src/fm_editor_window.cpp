@@ -155,9 +155,9 @@ void FM_Editor_Window::write_fm_params_to_mml(TextEditor& editor, int instrument
     instrument_string << "\n";
 
     for (int op = 0; op < 4; ++op) {
-        for (int p = 0; p < 10; ++p) {
-            instrument_string << (p == 0 ? " " : "") << std::setw(3) << std::right << fm_params[op][p];
-            if (p < 9) instrument_string << ",";
+        for (int param = 0; param < 10; ++param) {
+            instrument_string << (param == 0 ? " " : "") << std::setw(3) << std::right << fm_params[op][param];
+            if (param < 9) instrument_string << ",";
         }
         instrument_string << "\n";
     }
