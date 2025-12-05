@@ -44,7 +44,7 @@ target_include_directories(gui PUBLIC
 target_link_libraries(gui PUBLIC OpenGL::GL ${GLFW3_LIBRARIES})
 target_compile_definitions(gui PUBLIC -DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 
-add_executable(mmlgui
+add_executable(mmlgui-rng
 	src/main.cpp
 	src/window.cpp
 	src/main_window.cpp
@@ -59,8 +59,8 @@ add_executable(mmlgui
 	src/dmf_importer.cpp
 	src/miniz.c)
 
-target_link_libraries(mmlgui PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
-target_compile_definitions(mmlgui PRIVATE -DLOCAL_LIBVGM)
+target_link_libraries(mmlgui-rng PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
+target_compile_definitions(mmlgui-rng PRIVATE -DLOCAL_LIBVGM)
 
 if(CPPUNIT_FOUND)
 	add_executable(mmlgui_unittest

@@ -37,7 +37,7 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 #======================================================================
 
-MMLGUI_BIN = $(BIN)/mmlgui
+MMLGUI_BIN = $(BIN)/mmlgui-rng
 UNITTEST_BIN = $(BIN)/unittest
 
 all: $(MMLGUI_BIN) test
