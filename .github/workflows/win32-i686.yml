@@ -41,7 +41,9 @@ jobs:
           cmake .. \
             -G "MSYS Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_C_STANDARD=90 \
+            -DCMAKE_C_FLAGS="-std=gnu90"
       
       - name: Build
         run: |

@@ -52,6 +52,13 @@ endif()
 
 add_subdirectory(ctrmml)
 
+# Set C standard for libvgm compatibility (avoids C23 bool keyword conflict)
+# libvgm uses a custom stdbool.h that typedefs bool, which conflicts with C23
+if(NOT DEFINED CMAKE_C_STANDARD)
+	set(CMAKE_C_STANDARD 90)
+	set(CMAKE_C_STANDARD_REQUIRED OFF)
+endif()
+
 add_subdirectory(libvgm)
 
 add_library(gui
