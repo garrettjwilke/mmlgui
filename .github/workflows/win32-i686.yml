@@ -36,6 +36,14 @@ jobs:
           git fetch origin rng-patterns
           git checkout rng-patterns
       
+      - name: Fix ctrmml core.h missing cstdint include
+        run: |
+          cd ctrmml/src
+          # Add #include <cstdint> after #include <memory> if not already present
+          if ! grep -q "#include <cstdint>" core.h; then
+            sed -i 's|#include <memory>|#include <memory>\n#include <cstdint>|' core.h
+          fi
+      
       - name: Configure CMake
         run: |
           mkdir -p build
