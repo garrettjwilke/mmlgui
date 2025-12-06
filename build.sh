@@ -2,9 +2,9 @@
 
 git checkout rng-patterns
 git submodule update --init --recursive
-cd ctrmml
-git checkout rng-patterns
-cd ..
+#cd ctrmml
+#git checkout rng-patterns
+#cd ..
 
 if [ -d build ]
 then

@@ -12,3 +12,14 @@ CFLAGS += -I$(CTRMML_SRC)
 LDFLAGS += -L$(CTRMML_LIB) -l$(LIBCTRMML)
 
 LIBCTRMML_CHECK := $(CTRMML_LIB)/lib$(LIBCTRMML).a
+
+# Ensure ctrmml is on the rng-patterns branch before building
+.PHONY: ctrmml-checkout
+ctrmml-checkout:
+	@if [ -d "$(CTRMML)/.git" ]; then \
+		echo "Checking out rng-patterns branch in $(CTRMML)..."; \
+		cd $(CTRMML) && git checkout rng-patterns; \
+	fi
+
+# Make library build depend on checkout
+$(LIBCTRMML_CHECK): ctrmml-checkout

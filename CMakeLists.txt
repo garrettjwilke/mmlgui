@@ -34,7 +34,24 @@ else()
 	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" OFF)
 endif()
 
+# Ensure ctrmml is on the rng-patterns branch before building
+if(EXISTS "${CMAKE_SOURCE_DIR}/ctrmml/.git")
+	execute_process(
+		COMMAND git checkout rng-patterns
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ctrmml
+		RESULT_VARIABLE git_result
+		OUTPUT_QUIET
+		ERROR_QUIET
+	)
+	if(git_result EQUAL 0)
+		message(STATUS "Checked out rng-patterns branch in ctrmml")
+	else()
+		message(WARNING "Failed to checkout rng-patterns branch in ctrmml (result: ${git_result})")
+	endif()
+endif()
+
 add_subdirectory(ctrmml)
+
 add_subdirectory(libvgm)
 
 add_library(gui

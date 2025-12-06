@@ -82,7 +82,7 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/main.o \
 	$(OBJ)/unittest/test_track_info.o
 
-$(CTRMML_LIB)/lib$(LIBCTRMML).a:
+$(CTRMML_LIB)/lib$(LIBCTRMML).a: ctrmml-checkout
 	$(MAKE) -C $(CTRMML) lib
 
 $(UNITTEST_BIN): $(UNITTEST_OBJS) $(LIBCTRMML_CHECK)
