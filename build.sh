@@ -2,9 +2,6 @@
 
 git checkout rng-patterns
 git submodule update --init --recursive
-#cd ctrmml
-#git checkout rng-patterns
-#cd ..
 
 if [ -d build ]
 then
@@ -22,3 +19,12 @@ else
 fi
 
 cmake --build .
+
+if [ -f mmlgui-rng ]
+then
+  mv mmlgui-rng ../
+  echo "build success! run ./mmlgui-rng"
+else
+  echo "build failed"
+fi
+
