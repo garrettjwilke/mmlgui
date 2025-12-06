@@ -25,6 +25,8 @@ class Editor_Window : public Window
 		void play_from_cursor();
 		void play_from_line();
 
+		void set_editor_palette(bool light_mode);
+
 	private:
 		const char* default_filename = "Untitled.mml";
 		const char* default_filter = ".mml;.muc;.txt";

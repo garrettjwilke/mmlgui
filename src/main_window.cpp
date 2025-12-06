@@ -38,6 +38,7 @@ static bool debug_imgui_metrics = false;
 static bool debug_state_window = false;
 static bool debug_audio_window = false;
 static bool debug_ui_window = false;
+static int theme_selection = 0; // 0 = Dark, 1 = Light (shared across UI settings)
 
 static void debug_menu()
 {
@@ -135,6 +136,22 @@ static void debug_window()
 		ImGui::Begin("UI settings", &debug_ui_window, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
 		ImGui::DragFloat("UI scaling", &ImGui::GetIO().FontGlobalScale, 0.005f, 0.3f, 2.0f, "%.2f");
+
+		ImGui::Separator();
+		ImGui::Text("Theme:");
+		if (ImGui::RadioButton("Dark", theme_selection == 0))
+		{
+			theme_selection = 0;
+			ImGui::StyleColorsDark();
+			main_window.update_all_editor_palettes(false);
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton("Light", theme_selection == 1))
+		{
+			theme_selection = 1;
+			ImGui::StyleColorsLight();
+			main_window.update_all_editor_palettes(true);
+		}
 
 		ImGui::End();
 	}
@@ -239,6 +256,10 @@ void Main_Window::display()
 				children.push_back(std::make_shared<FPS_Overlay>());
 			}
 		}
+		if (ImGui::MenuItem("UI Settings...", nullptr, nullptr))
+		{
+			debug_ui_window = true;
+		}
 		if (ImGui::MenuItem("New MML...", nullptr, nullptr))
 		{
 			children.push_back(std::make_shared<Editor_Window>());
@@ -278,5 +299,23 @@ void Main_Window::show_about_window()
 void Main_Window::show_config_window()
 {
 	show_config = true;
+}
+
+void Main_Window::update_all_editor_palettes(bool light_mode)
+{
+	for(auto i = children.begin(); i != children.end(); i++)
+	{
+		if(i->get()->active && i->get()->type == WT_EDITOR)
+		{
+			Editor_Window* editor = dynamic_cast<Editor_Window*>(i->get());
+			if(editor)
+				editor->set_editor_palette(light_mode);
+		}
+	}
+}
+
+bool Main_Window::is_light_theme() const
+{
+	return theme_selection == 1;
 }
 

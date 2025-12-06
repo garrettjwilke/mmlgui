@@ -56,6 +56,8 @@ Editor_Window::Editor_Window()
 	type = WT_EDITOR;
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
 	song_manager = std::make_shared<Song_Manager>();
+	// Set initial palette based on current theme
+	set_editor_palette(main_window.is_light_theme());
 }
 
 void Editor_Window::display()
@@ -759,4 +761,12 @@ void Editor_Window::show_export_menu()
 		}
 		id++;
 	}
+}
+
+void Editor_Window::set_editor_palette(bool light_mode)
+{
+	if (light_mode)
+		editor.SetPalette(TextEditor::GetLightPalette());
+	else
+		editor.SetPalette(TextEditor::GetDarkPalette());
 }
