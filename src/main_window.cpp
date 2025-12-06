@@ -55,7 +55,7 @@ static void debug_menu()
 	{
 		// if ctrl+shift was held, stimulate a segfault
 		if(ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyAlt)
-			*(int*)0 = 0;
+			__builtin_trap();
 		// if ctrl was held, raise a signal (usually that won't happen)
 		if(ImGui::GetIO().KeyCtrl)
 			std::raise(SIGFPE);
@@ -305,12 +305,9 @@ void Main_Window::update_all_editor_palettes(bool light_mode)
 {
 	for(auto i = children.begin(); i != children.end(); i++)
 	{
-		if(i->get()->active && i->get()->type == WT_EDITOR)
-		{
-			Editor_Window* editor = dynamic_cast<Editor_Window*>(i->get());
-			if(editor)
-				editor->set_editor_palette(light_mode);
-		}
+		Editor_Window* editor = dynamic_cast<Editor_Window*>(i->get());
+		if(editor)
+			editor->set_editor_palette(light_mode);
 	}
 }
 
