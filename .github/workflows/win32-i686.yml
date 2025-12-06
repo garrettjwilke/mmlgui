@@ -66,3 +66,26 @@ jobs:
           name: mmlgui-rng-x86_64
           path: build/mmlgui-rng.exe
           if-no-files-found: error
+      
+      - name: Get version tag
+        id: get_version
+        run: |
+          VERSION_TAG="v$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
+          echo "tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "Created tag: $VERSION_TAG"
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: Release ${{ steps.get_version.outputs.tag }}
+          body: |
+            Windows x86_64 build of mmlgui-rng
+            
+            Built on: ${{ github.run_started_at }}
+            Commit: ${{ github.sha }}
+          files: build/mmlgui-rng.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
