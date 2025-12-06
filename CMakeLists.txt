@@ -1,8 +1,22 @@
 cmake_minimum_required(VERSION 3.11)
 project(mmlgui LANGUAGES C CXX)
 
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
+
+# macOS-specific: Help pkg-config find Homebrew packages
+if(APPLE)
+	# Set PKG_CONFIG_PATH to include Homebrew paths
+	set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/glfw/lib/pkgconfig:/opt/homebrew/opt/cppunit/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+	# Also try /usr/local for older Homebrew installations
+	if(EXISTS "/usr/local/opt/glfw/lib/pkgconfig")
+		set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/glfw/lib/pkgconfig:/usr/local/opt/cppunit/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+	endif()
+endif()
 
 pkg_check_modules(GLFW3 REQUIRED glfw3)
 pkg_check_modules(CPPUNIT cppunit)
@@ -43,6 +57,11 @@ target_include_directories(gui PUBLIC
 
 target_link_libraries(gui PUBLIC OpenGL::GL ${GLFW3_LIBRARIES})
 target_compile_definitions(gui PUBLIC -DIMGUI_IMPL_OPENGL_LOADER_GL3W)
+
+# macOS-specific: Add CoreFoundation framework
+if(APPLE)
+	target_link_libraries(gui PUBLIC "-framework CoreFoundation")
+endif()
 
 add_executable(mmlgui-rng
 	src/main.cpp
