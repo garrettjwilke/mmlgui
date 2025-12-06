@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git checkout rng-patterns
+#git checkout rng-patterns
 git submodule update --init --recursive
 
 if [ -d build ]
