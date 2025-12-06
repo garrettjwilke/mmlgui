@@ -1,4 +1,4 @@
-name: Win32 i686
+name: Windows Build
 
 on:
   push:
@@ -9,39 +9,55 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        arch: [i686, x86_64]
     runs-on: windows-latest
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v2
-      - uses: msys2/setup-msys2@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          msystem: MINGW32
+          submodules: recursive
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW${{ matrix.arch == 'i686' && '32' || '64' }}
           update: true
-          install: base-devel git mingw-w64-i686-toolchain mingw-w64-i686-glfw mingw-w64-i686-cppunit mingw-w64-i686-cmake
-      - name: build-libvgm
+          install: |
+            base-devel
+            git
+            mingw-w64-${{ matrix.arch }}-toolchain
+            mingw-w64-${{ matrix.arch }}-glfw
+            mingw-w64-${{ matrix.arch }}-cmake
+            mingw-w64-${{ matrix.arch }}-pkg-config
+      
+      - name: Checkout ctrmml rng-patterns branch
         run: |
-          git clone -n https://github.com/valleybell/libvgm
-          cd libvgm
-          git checkout 5fe3883a
-          mkdir build
+          cd ctrmml
+          git fetch origin rng-patterns || true
+          git checkout rng-patterns || git checkout -b rng-patterns origin/rng-patterns || true
+      
+      - name: Configure CMake
+        run: |
+          mkdir -p build
           cd build
-          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
-          make
-          make install
-      - name: init-submodules
+          cmake .. \
+            -G "MSYS Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      
+      - name: Build
         run: |
-          git submodule update --init --recursive
-# cppunit doesn't play nice with github's win32 environment so this is skipped
-# for now
-#     - name: run-unittests
-#       run: |
-#       make test RELEASE=1
-      - name: make
-        run: |
-          make bin/mmlgui RELEASE=1
-      - uses: actions/upload-artifact@v2
+          cd build
+          cmake --build . --config Release
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: binary
-          path: bin/mmlgui.exe
+          name: mmlgui-rng-${{ matrix.arch }}
+          path: build/mmlgui-rng.exe
+          if-no-files-found: error
