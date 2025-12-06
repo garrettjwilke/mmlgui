@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <cstdint>
 
 //! Abstract window class
 class Window
