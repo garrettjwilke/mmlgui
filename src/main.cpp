@@ -201,6 +201,9 @@ int main(int argc, char* argv[])
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+	
+	// Load UI settings from config file
+	Main_Window::load_ui_settings();
 
 	// Setup scaling
 	float scale;

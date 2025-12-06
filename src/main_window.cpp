@@ -6,6 +6,18 @@
 
 #include <iostream>
 #include <csignal>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+#ifdef _WIN32
+#include <windows.h>
+#include <shlobj.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <pwd.h>
+#endif
 
 //=====================================================================
 static const char* version_string = "v0.1";
@@ -39,6 +51,102 @@ static bool debug_state_window = false;
 static bool debug_audio_window = false;
 static bool debug_ui_window = false;
 static int theme_selection = 0; // 0 = Dark, 1 = Light (shared across UI settings)
+
+// Config file path
+static std::string get_config_dir()
+{
+#ifdef _WIN32
+	char appdata_path[MAX_PATH];
+	if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appdata_path)))
+	{
+		std::string path = std::string(appdata_path) + "\\mmlgui-rng";
+		CreateDirectoryA(path.c_str(), NULL);  // Returns 0 on success or if directory exists
+		return path;
+	}
+	return "";
+#else
+	const char* home = getenv("HOME");
+	if (!home)
+	{
+		struct passwd* pw = getpwuid(getuid());
+		home = pw ? pw->pw_dir : nullptr;
+	}
+	if (home)
+	{
+		std::string config_base = std::string(home) + "/.config";
+		mkdir(config_base.c_str(), 0755);  // Create .config if it doesn't exist (ignore errors)
+		std::string path = config_base + "/mmlgui-rng";
+		mkdir(path.c_str(), 0755);  // Create mmlgui-rng directory (ignore errors if exists)
+		return path;
+	}
+	return "";
+#endif
+}
+
+static std::string get_config_file_path()
+{
+	std::string config_dir = get_config_dir();
+	if (config_dir.empty())
+		return "";
+#ifdef _WIN32
+	return config_dir + "\\ui_settings.ini";
+#else
+	return config_dir + "/ui_settings.ini";
+#endif
+}
+
+void Main_Window::load_ui_settings()
+{
+	std::string config_file = get_config_file_path();
+	if (config_file.empty())
+		return;
+	
+	std::ifstream file(config_file);
+	if (!file.is_open())
+		return;
+	
+	std::string line;
+	while (std::getline(file, line))
+	{
+		if (line.find("theme=") == 0)
+		{
+			theme_selection = std::stoi(line.substr(6));
+		}
+		else if (line.find("ui_scale=") == 0)
+		{
+			float scale = std::stof(line.substr(9));
+			ImGui::GetIO().FontGlobalScale = scale;
+		}
+	}
+	file.close();
+	
+	// Apply theme
+	if (theme_selection == 1)
+	{
+		ImGui::StyleColorsLight();
+		main_window.update_all_editor_palettes(true);
+	}
+	else
+	{
+		ImGui::StyleColorsDark();
+		main_window.update_all_editor_palettes(false);
+	}
+}
+
+static void save_ui_settings()
+{
+	std::string config_file = get_config_file_path();
+	if (config_file.empty())
+		return;
+	
+	std::ofstream file(config_file);
+	if (!file.is_open())
+		return;
+	
+	file << "theme=" << theme_selection << "\n";
+	file << "ui_scale=" << ImGui::GetIO().FontGlobalScale << "\n";
+	file.close();
+}
 
 static void debug_menu()
 {
@@ -144,6 +252,7 @@ static void debug_window()
 			theme_selection = 0;
 			ImGui::StyleColorsDark();
 			main_window.update_all_editor_palettes(false);
+			save_ui_settings();
 		}
 		ImGui::SameLine();
 		if (ImGui::RadioButton("Light", theme_selection == 1))
@@ -151,6 +260,15 @@ static void debug_window()
 			theme_selection = 1;
 			ImGui::StyleColorsLight();
 			main_window.update_all_editor_palettes(true);
+			save_ui_settings();
+		}
+		
+		// Save UI scale when it changes
+		static float last_scale = ImGui::GetIO().FontGlobalScale;
+		if (last_scale != ImGui::GetIO().FontGlobalScale)
+		{
+			last_scale = ImGui::GetIO().FontGlobalScale;
+			save_ui_settings();
 		}
 
 		ImGui::End();
