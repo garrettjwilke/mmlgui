@@ -8,6 +8,11 @@ then
   rm -rf build
 fi
 
+if [ -f mmlgui-rng ]
+then
+  rm mmlgui-rng
+fi
+
 mkdir build
 cd build
 
@@ -27,4 +32,3 @@ then
 else
   echo "build failed"
 fi
-
