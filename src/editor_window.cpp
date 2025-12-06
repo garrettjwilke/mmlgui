@@ -177,11 +177,11 @@ void Editor_Window::display()
 			if (ImGui::BeginMenu("Editor style"))
 			{
 				if (ImGui::MenuItem("Dark palette"))
-					editor.SetPalette(TextEditor::GetDarkPalette());
+					set_palette_with_black_text(TextEditor::GetDarkPalette());
 				if (ImGui::MenuItem("Light palette"))
-					editor.SetPalette(TextEditor::GetLightPalette());
+					set_palette_with_black_text(TextEditor::GetLightPalette());
 				if (ImGui::MenuItem("Retro blue palette"))
-					editor.SetPalette(TextEditor::GetRetroBluePalette());
+					set_palette_with_black_text(TextEditor::GetRetroBluePalette());
 				ImGui::EndMenu();
 			}
 			ImGui::EndMenu();
@@ -766,7 +766,15 @@ void Editor_Window::show_export_menu()
 void Editor_Window::set_editor_palette(bool light_mode)
 {
 	if (light_mode)
-		editor.SetPalette(TextEditor::GetLightPalette());
+		set_palette_with_black_text(TextEditor::GetLightPalette());
 	else
-		editor.SetPalette(TextEditor::GetDarkPalette());
+		set_palette_with_black_text(TextEditor::GetDarkPalette());
+}
+
+void Editor_Window::set_palette_with_black_text(const TextEditor::Palette& palette)
+{
+	TextEditor::Palette modified_palette = palette;
+	// Set Default text color to black (0xff000000 = black with full opacity)
+	modified_palette[(int)TextEditor::PaletteIndex::Default] = 0xff000000;
+	editor.SetPalette(modified_palette);
 }
