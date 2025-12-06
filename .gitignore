@@ -7,4 +7,5 @@ doxygen
 *.exe
 imgui.ini
 mmlgui
+mmlgui-rng
 ctrmml/*
