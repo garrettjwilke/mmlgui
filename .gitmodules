@@ -11,7 +11,7 @@
 	path = ctrmml
 	url = https://github.com/garrettjwilke/ctrmml
 	branch = rng-patterns
-	ignore = dirty
+	ignore = all
 [submodule "libvgm"]
 	path = libvgm
 	url = https://github.com/ValleyBell/libvgm
