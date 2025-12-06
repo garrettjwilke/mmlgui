@@ -9,9 +9,6 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        arch: [i686, x86_64]
     runs-on: windows-latest
     defaults:
       run:
@@ -25,15 +22,15 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW${{ matrix.arch == 'i686' && '32' || '64' }}
+          msystem: MINGW64
           update: true
           install: |
             base-devel
             git
-            mingw-w64-${{ matrix.arch }}-toolchain
-            mingw-w64-${{ matrix.arch }}-glfw
-            mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-pkg-config
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-glfw
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkg-config
       
       - name: Checkout ctrmml rng-patterns branch
         run: |
@@ -58,6 +55,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mmlgui-rng-${{ matrix.arch }}
+          name: mmlgui-rng-x86_64
           path: build/mmlgui-rng.exe
           if-no-files-found: error
