@@ -48,7 +48,7 @@ class Editor_Window : public Window
 		void show_track_positions();
 
 		void show_export_menu();
-		void set_palette_with_black_text(const TextEditor::Palette& palette);
+		void set_palette_with_theme_text(const TextEditor::Palette& palette, bool light_mode);
 
 		inline void set_flag(uint32_t data) { flag |= data; };
 		inline void clear_flag(uint32_t data) { flag &= ~data; };

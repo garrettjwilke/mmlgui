@@ -419,6 +419,11 @@ void Main_Window::show_config_window()
 	show_config = true;
 }
 
+void Main_Window::show_ui_settings_window()
+{
+	debug_ui_window = true;
+}
+
 void Main_Window::update_all_editor_palettes(bool light_mode)
 {
 	for(auto i = children.begin(); i != children.end(); i++)

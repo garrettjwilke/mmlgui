@@ -26,6 +26,11 @@
 
 #include "imgui.h"
 
+#include "core.h"
+#include "song.h"
+#include "track.h"
+#include "player.h"
+
 #include <GLFW/glfw3.h>
 #include <string>
 #include <cstring>
@@ -177,12 +182,17 @@ void Editor_Window::display()
 			if (ImGui::BeginMenu("Editor style"))
 			{
 				if (ImGui::MenuItem("Dark palette"))
-					set_palette_with_black_text(TextEditor::GetDarkPalette());
+					set_palette_with_theme_text(TextEditor::GetDarkPalette(), false);
 				if (ImGui::MenuItem("Light palette"))
-					set_palette_with_black_text(TextEditor::GetLightPalette());
+					set_palette_with_theme_text(TextEditor::GetLightPalette(), true);
 				if (ImGui::MenuItem("Retro blue palette"))
-					set_palette_with_black_text(TextEditor::GetRetroBluePalette());
+					set_palette_with_theme_text(TextEditor::GetRetroBluePalette(), false);
 				ImGui::EndMenu();
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("UI Settings..."))
+			{
+				main_window.show_ui_settings_window();
 			}
 			ImGui::EndMenu();
 		}
@@ -705,6 +715,53 @@ std::string Editor_Window::dump_state()
 	return str;
 }
 
+//! Get the length of a subroutine (helper function for macro highlighting)
+static unsigned int get_subroutine_length_helper(Song& song, unsigned int param, unsigned int max_recursion)
+{
+	try
+	{
+		Track& track = song.get_track(param);
+		if(track.get_event_count())
+		{
+			auto event = track.get_event(track.get_event_count() - 1);
+			uint32_t end_time;
+			if(event.type == Event::JUMP && max_recursion != 0)
+				end_time = event.play_time + get_subroutine_length_helper(song, event.param, max_recursion - 1);
+			else if(event.type == Event::LOOP_END && max_recursion != 0)
+			{
+				// Simplified loop length calculation
+				unsigned int loop_count = event.param - 1;
+				unsigned int loop_start_time = 0;
+				int depth = 0;
+				for(unsigned int pos = track.get_event_count() - 1; pos > 0; pos--)
+				{
+					auto loop_event = track.get_event(pos);
+					if(loop_event.type == Event::LOOP_END)
+						depth++;
+					else if(loop_event.type == Event::LOOP_START)
+					{
+						if(depth)
+							depth--;
+						else
+						{
+							loop_start_time = loop_event.play_time;
+							break;
+						}
+					}
+				}
+				end_time = event.play_time + (event.play_time - loop_start_time) * loop_count;
+			}
+			else
+				end_time = event.play_time + event.on_time + event.off_time;
+			return end_time - track.get_event(0).play_time;
+		}
+	}
+	catch(std::exception &e)
+	{
+	}
+	return 0;
+}
+
 void Editor_Window::show_track_positions()
 {
 	std::map<int, std::unordered_set<int>> highlights = {};
@@ -718,6 +775,13 @@ void Editor_Window::show_track_positions()
 	auto player = song_manager->get_player();
 	if(player != nullptr && !player->get_finished())
 		ticks = player->get_driver()->get_player_ticks();
+
+	auto song = song_manager->get_song();
+	if(song == nullptr)
+	{
+		editor.SetMmlHighlights(highlights);
+		return;
+	}
 
 	for(auto track_it = map.begin(); track_it != map.end(); track_it++)
 	{
@@ -736,11 +800,67 @@ void Editor_Window::show_track_positions()
 			auto event = it->second;
 			for(auto && i : event.references)
 			{
-				if(!i->get_filename().size())
+				// Include all references for highlighting - empty filename means current file,
+				// and we want to highlight macro tracks and rndpat patterns even if they have filenames
+				highlights[i->get_line()].insert(i->get_column());
+			}
+		}
+
+		// Also check if we're inside a JUMP event (macro call) by examining the actual track
+		// This handles cases where the Track_Info doesn't have events during macro execution
+		try
+		{
+			Track& track = song->get_track(track_it->first);
+			unsigned int event_count = track.get_event_count();
+			
+			// Find JUMP events that might be active at the current tick position
+			for(unsigned int pos = 0; pos < event_count; pos++)
+			{
+				auto track_event = track.get_event(pos);
+				if(track_event.type == Event::JUMP)
 				{
-					highlights[i->get_line()].insert(i->get_column());
+					// Calculate if we're within this JUMP event's duration
+					unsigned int jump_start = track_event.play_time;
+					unsigned int jump_length = get_subroutine_length_helper(*song, track_event.param, 10);
+					unsigned int jump_end = jump_start + jump_length;
+					
+					// Account for looping
+					unsigned int local_ticks = ticks - offset;
+					if(local_ticks >= jump_start && local_ticks < jump_end)
+					{
+						// We're inside a macro call - get events from the macro track
+						unsigned int macro_offset = local_ticks - jump_start;
+						
+						// Check if the macro track is in our map
+						auto macro_it = map.find(track_event.param);
+						if(macro_it != map.end())
+						{
+							auto& macro_info = macro_it->second;
+							int macro_offset_loop = 0;
+							
+							// Handle looping in macro track
+							if(macro_offset > macro_info.length && macro_info.loop_length)
+								macro_offset_loop = ((macro_offset - macro_info.loop_start) / macro_info.loop_length) * macro_info.loop_length;
+							
+							// Find events in the macro track
+							auto macro_event_it = macro_info.events.lower_bound(macro_offset - macro_offset_loop);
+							if(macro_event_it != macro_info.events.begin())
+							{
+								--macro_event_it;
+								auto macro_event = macro_event_it->second;
+								for(auto && ref : macro_event.references)
+								{
+									highlights[ref->get_line()].insert(ref->get_column());
+								}
+							}
+						}
+					}
 				}
 			}
+		}
+		catch(std::exception&)
+		{
+			// Track might not exist, skip it
 		}
 	}
 	editor.SetMmlHighlights(highlights);
@@ -766,15 +886,16 @@ void Editor_Window::show_export_menu()
 void Editor_Window::set_editor_palette(bool light_mode)
 {
 	if (light_mode)
-		set_palette_with_black_text(TextEditor::GetLightPalette());
+		set_palette_with_theme_text(TextEditor::GetLightPalette(), true);
 	else
-		set_palette_with_black_text(TextEditor::GetDarkPalette());
+		set_palette_with_theme_text(TextEditor::GetDarkPalette(), false);
 }
 
-void Editor_Window::set_palette_with_black_text(const TextEditor::Palette& palette)
+void Editor_Window::set_palette_with_theme_text(const TextEditor::Palette& palette, bool light_mode)
 {
 	TextEditor::Palette modified_palette = palette;
-	// Set Default text color to black (0xff000000 = black with full opacity)
-	modified_palette[(int)TextEditor::PaletteIndex::Default] = 0xff000000;
+	// Set Default text color based on theme:
+	// White (0xffffffff) for dark mode, black (0xff000000) for light mode
+	modified_palette[(int)TextEditor::PaletteIndex::Default] = light_mode ? 0xff000000 : 0xffffffff;
 	editor.SetPalette(modified_palette);
 }
