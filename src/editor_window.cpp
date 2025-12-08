@@ -104,6 +104,10 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Import patches from DMF...", nullptr, nullptr, !editor.IsReadOnly()))
 				set_flag(IMPORT|DIALOG);
 			show_export_menu();
+			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
+			{
+				main_window.show_export_window();
+			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Close", "Ctrl+W"))
 				keep_open = false;

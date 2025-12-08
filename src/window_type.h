@@ -7,7 +7,8 @@ enum Window_Type
 	WT_FPS_OVERLAY,
 	WT_EDITOR,
 	WT_CONFIG,
-	WT_ABOUT
+	WT_ABOUT,
+	WT_EXPORT
 };
 
 #endif

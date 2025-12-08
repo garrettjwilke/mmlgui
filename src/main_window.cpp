@@ -2,6 +2,7 @@
 #include "main_window.h"
 #include "editor_window.h"
 #include "config_window.h"
+#include "export_window.h"
 #include "audio_manager.h"
 
 #include <iostream>
@@ -353,6 +354,7 @@ void About_Window::display()
 Main_Window::Main_Window()
 	: show_about(false)
 	, show_config(false)
+	, show_export(false)
 {
 	children.push_back(std::make_shared<FPS_Overlay>());
 	children.push_back(std::make_shared<Editor_Window>());
@@ -382,6 +384,10 @@ void Main_Window::display()
 		{
 			children.push_back(std::make_shared<Editor_Window>());
 		}
+		if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
+		{
+			show_export_window();
+		}
 		if (ImGui::MenuItem("About...", nullptr, nullptr))
 		{
 			show_about_window();
@@ -406,6 +412,15 @@ void Main_Window::display()
 			children.push_back(std::make_shared<Config_Window>());
 		}
 	}
+	if (show_export)
+	{
+		show_export = false;
+		bool overlay_active = find_child(WT_EXPORT) != children.end();
+		if(!overlay_active)
+		{
+			children.push_back(std::make_shared<Export_Window>());
+		}
+	}
 	debug_window();
 }
 
@@ -417,6 +432,11 @@ void Main_Window::show_about_window()
 void Main_Window::show_config_window()
 {
 	show_config = true;
+}
+
+void Main_Window::show_export_window()
+{
+	show_export = true;
 }
 
 void Main_Window::show_ui_settings_window()

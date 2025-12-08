@@ -92,6 +92,7 @@ add_executable(mmlgui-rng
 	src/window.cpp
 	src/main_window.cpp
 	src/editor_window.cpp
+	src/export_window.cpp
 	src/song_manager.cpp
 	src/track_info.cpp
 	src/track_view_window.cpp

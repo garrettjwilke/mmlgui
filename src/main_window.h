@@ -28,6 +28,7 @@ class Main_Window : public Window
 
 		void show_about_window();
 		void show_config_window();
+		void show_export_window();
 		void show_ui_settings_window();
 		void update_all_editor_palettes(bool light_mode);
 		bool is_light_theme() const;
@@ -36,6 +37,7 @@ class Main_Window : public Window
 	private:
 		bool show_about;
 		bool show_config;
+		bool show_export;
 };
 
 extern Main_Window main_window;
