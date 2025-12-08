@@ -88,8 +88,9 @@ public:
             // Linear interpolation
             int32_t val = (int32_t)(s0 + (s1 - s0) * frac);
 
-            output[i].L = val;
-            output[i].R = val; 
+            // Mixer expects 8.24 fixed point or similar scaling (shifted down by 8 in callback)
+            output[i].L = val << 8;
+            output[i].R = val << 8; 
 
             pos += step;
         }
