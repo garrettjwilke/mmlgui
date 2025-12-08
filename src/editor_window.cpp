@@ -458,7 +458,8 @@ void Editor_Window::handle_file_io()
 		else
 		{
 			modal_open = 1;
-			fs.chooseFileDialog(test_flag(DIALOG), fs.getLastDirectory(), default_filter);
+			ImVec2 dialog_size(700, 600);
+			fs.chooseFileDialog(test_flag(DIALOG), fs.getLastDirectory(), default_filter, NULL, dialog_size);
 			clear_flag(DIALOG);
 			if(strlen(fs.getChosenPath()) > 0)
 			{
