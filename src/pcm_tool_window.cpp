@@ -183,24 +183,31 @@ void PCM_Tool_Window::display()
             ImVec2 content_region = ImGui::GetContentRegionAvail();
             float plot_width = content_region.x;
             
+            // Define margins for markers and padding
+            float margin_x = 15.0f; // Horizontal margin to ensure markers are visible
+            float margin_y = 20.0f; // Vertical margin for easier marker grabbing at top/bottom
+            
             // Define the visible box bounds (with margins for markers)
-            float margin_x = 15.0f; // Margin to ensure markers are visible
             ImVec2 box_min = ImGui::GetCursorScreenPos();
             box_min.x += margin_x;
+            box_min.y += margin_y;
             ImVec2 box_max = ImVec2(box_min.x + plot_width - margin_x * 2.0f, box_min.y + plot_height);
             
             // Draw the bounding box
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRect(box_min, box_max, IM_COL32(200, 200, 200, 255), 0.0f, 0, 1.0f);
             
+            // Position cursor for waveform plot (inside the box with padding)
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + margin_y);
+            
             // Draw waveform inside the box
             ImVec2 plot_size = ImVec2(plot_width - margin_x * 2.0f, plot_height);
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
             ImGui::PlotLines("##Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, plot_size);
             
-            // Use the box bounds for marker calculations (not the PlotLines widget bounds)
-            ImVec2 plot_min = ImVec2(box_min.x + 2.0f, box_min.y + 2.0f); // Small inner margin
-            ImVec2 plot_max = ImVec2(box_max.x - 2.0f, box_max.y - 2.0f); // Small inner margin
+            // Use the box bounds for marker calculations (markers can extend into the padding area)
+            ImVec2 plot_min = ImVec2(box_min.x + 2.0f, box_min.y); // Markers can use full box height
+            ImVec2 plot_max = ImVec2(box_max.x - 2.0f, box_max.y); // Markers can use full box height
             
             // Interaction logic for drag tabs
             if (pcm_data.size() > 0)
@@ -262,6 +269,9 @@ void PCM_Tool_Window::display()
                 // End Point (Red) - Bottom Tab
                 handle_tab(&end_point, false, IM_COL32(255, 0, 0, 255), "##end_tab");
             }
+            
+            // Advance cursor past the waveform area (including padding)
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + margin_y);
 
             // Sliders for Start/End
             int max_sample = (int)pcm_data.size();
