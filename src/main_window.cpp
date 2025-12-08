@@ -3,6 +3,7 @@
 #include "editor_window.h"
 #include "config_window.h"
 #include "export_window.h"
+#include "pcm_tool_window.h"
 #include "audio_manager.h"
 
 #include <iostream>
@@ -355,6 +356,7 @@ Main_Window::Main_Window()
 	: show_about(false)
 	, show_config(false)
 	, show_export(false)
+	, show_pcm_tool(false)
 {
 	children.push_back(std::make_shared<FPS_Overlay>());
 	children.push_back(std::make_shared<Editor_Window>());
@@ -387,6 +389,10 @@ void Main_Window::display()
 		if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
 		{
 			show_export_window();
+		}
+		if (ImGui::MenuItem("PCM Tool...", nullptr, nullptr))
+		{
+			show_pcm_tool_window();
 		}
 		if (ImGui::MenuItem("About...", nullptr, nullptr))
 		{
@@ -421,6 +427,15 @@ void Main_Window::display()
 			children.push_back(std::make_shared<Export_Window>());
 		}
 	}
+	if (show_pcm_tool)
+	{
+		show_pcm_tool = false;
+		bool overlay_active = find_child(WT_PCM_TOOL) != children.end();
+		if(!overlay_active)
+		{
+			children.push_back(std::make_shared<PCM_Tool_Window>());
+		}
+	}
 	debug_window();
 }
 
@@ -437,6 +452,11 @@ void Main_Window::show_config_window()
 void Main_Window::show_export_window()
 {
 	show_export = true;
+}
+
+void Main_Window::show_pcm_tool_window()
+{
+	show_pcm_tool = true;
 }
 
 void Main_Window::show_ui_settings_window()

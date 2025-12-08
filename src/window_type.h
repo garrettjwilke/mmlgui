@@ -8,7 +8,8 @@ enum Window_Type
 	WT_EDITOR,
 	WT_CONFIG,
 	WT_ABOUT,
-	WT_EXPORT
+	WT_EXPORT,
+	WT_PCM_TOOL
 };
 
 #endif
