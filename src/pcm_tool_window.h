@@ -18,6 +18,7 @@ private:
     void load_file(const char* filename);
     void save_file(const char* filename);
     void resample_and_save(const char* filename);
+    void resample_and_save_slices(const char* base_filename);
     void start_preview();
     void stop_preview();
 
@@ -36,6 +37,10 @@ private:
     bool double_speed;
     std::shared_ptr<Audio_Stream> preview_stream;
     int current_playback_position; // Current playback position in samples
+    
+    // Slicing options
+    bool slice_enabled;
+    int num_slices;
     
     // Zoom state
     bool zoom_enabled;

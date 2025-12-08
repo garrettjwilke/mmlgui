@@ -143,6 +143,8 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     zoom_point = 0; // Default to start point
     zoom_level = 1.0f;
     zoom_window_samples = 1000; // Default zoom window
+    slice_enabled = false;
+    num_slices = 2;
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
 }
@@ -439,7 +441,19 @@ void PCM_Tool_Window::display()
 
             ImGui::Separator();
             ImGui::Checkbox("Double Speed", &double_speed);
-            ImGui::SameLine();
+            
+            ImGui::Separator();
+            ImGui::Checkbox("Enable Slicing", &slice_enabled);
+            if (slice_enabled)
+            {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(100);
+                ImGui::InputInt("Number of Slices", &num_slices, 1, 1);
+                if (num_slices < 1) num_slices = 1;
+                if (num_slices > 100) num_slices = 100;
+            }
+            
+            ImGui::Separator();
             bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
             if (save_clicked)
             {
@@ -456,19 +470,55 @@ void PCM_Tool_Window::display()
                 ImVec2 size(600, 400);
                 ImVec2 pos = ImVec2(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
 
-                const char* path = fs.saveFileDialog(save_clicked, input_path, "output.wav", ".wav", "Save PCM", size, pos);
+                const char* path = fs.saveFileDialog(save_clicked, input_path, slice_enabled ? "output.wav" : "output.wav", ".wav", slice_enabled ? "Save PCM (Base Name)" : "Save PCM", size, pos);
                 if (strlen(path) > 0)
                 {
-                    if (ImGuiFs::FileExists(path))
+                    if (slice_enabled)
                     {
-                        pending_save_path = path;
-                        ImGui::OpenPopup("Overwrite?");
-                        browse_save = false;
+                        // For slicing, we'll save multiple files, so check if any would overwrite
+                        bool would_overwrite = false;
+                        std::string base_path = path;
+                        // Remove .wav extension if present
+                        if (base_path.length() >= 4 && base_path.substr(base_path.length() - 4) == ".wav")
+                        {
+                            base_path = base_path.substr(0, base_path.length() - 4);
+                        }
+                        
+                        for (int i = 1; i <= num_slices; ++i)
+                        {
+                            std::string slice_path = base_path + "-" + std::to_string(i) + ".wav";
+                            if (ImGuiFs::FileExists(slice_path.c_str()))
+                            {
+                                would_overwrite = true;
+                                break;
+                            }
+                        }
+                        
+                        if (would_overwrite)
+                        {
+                            pending_save_path = path;
+                            ImGui::OpenPopup("Overwrite?");
+                            browse_save = false;
+                        }
+                        else
+                        {
+                            resample_and_save_slices(path);
+                            browse_save = false;
+                        }
                     }
                     else
                     {
-                        resample_and_save(path);
-                        browse_save = false;
+                        if (ImGuiFs::FileExists(path))
+                        {
+                            pending_save_path = path;
+                            ImGui::OpenPopup("Overwrite?");
+                            browse_save = false;
+                        }
+                        else
+                        {
+                            resample_and_save(path);
+                            browse_save = false;
+                        }
                     }
                 }
                 else if (fs.hasUserJustCancelledDialog())
@@ -484,7 +534,14 @@ void PCM_Tool_Window::display()
 
                 if (ImGui::Button("Yes", ImVec2(120, 0)))
                 {
-                    resample_and_save(pending_save_path.c_str());
+                    if (slice_enabled)
+                    {
+                        resample_and_save_slices(pending_save_path.c_str());
+                    }
+                    else
+                    {
+                        resample_and_save(pending_save_path.c_str());
+                    }
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SetItemDefaultFocus();
@@ -860,5 +917,131 @@ void PCM_Tool_Window::resample_and_save(const char* filename)
         status_message = "Exported " + std::to_string(resampled.size()) + " samples to " + std::string(filename);
     } else {
         status_message = "Failed to write output file";
+    }
+}
+
+void PCM_Tool_Window::resample_and_save_slices(const char* base_filename)
+{
+    if (pcm_data.empty()) return;
+    if (num_slices < 1) {
+        status_message = "Invalid number of slices";
+        return;
+    }
+
+    int target_rate = 17500;
+    
+    // 1. Extract selection
+    if (start_point < 0) start_point = 0;
+    if (end_point > (int)pcm_data.size()) end_point = (int)pcm_data.size();
+    if (start_point >= end_point) {
+        status_message = "Invalid selection range";
+        return;
+    }
+
+    std::vector<short> selection;
+    selection.reserve(end_point - start_point);
+    for(int i = start_point; i < end_point; ++i) {
+        selection.push_back(pcm_data[i]);
+    }
+
+    // 2. Resample
+    std::vector<short> resampled;
+    if (sample_rate == target_rate) {
+        resampled = selection;
+    } else {
+        double ratio = (double)sample_rate / (double)target_rate;
+        int new_length = (int)(selection.size() / ratio);
+        resampled.resize(new_length);
+        
+        for(int i = 0; i < new_length; ++i) {
+            double src_idx = i * ratio;
+            int idx0 = (int)src_idx;
+            int idx1 = idx0 + 1;
+            float frac = (float)(src_idx - idx0);
+            
+            if (idx1 >= (int)selection.size()) idx1 = idx0;
+            
+            float s0 = selection[idx0];
+            float s1 = selection[idx1];
+            resampled[i] = (short)(s0 + (s1 - s0) * frac);
+        }
+    }
+
+    // 3. Apply speed doubling if enabled
+    if (double_speed) {
+        std::vector<short> speed_doubled;
+        speed_doubled.reserve(resampled.size() / 2);
+        for (size_t i = 0; i < resampled.size(); i += 2) {
+            speed_doubled.push_back(resampled[i]);
+        }
+        resampled = speed_doubled;
+    }
+
+    // 4. Split into slices and save each
+    std::string base_path = base_filename;
+    // Remove .wav extension if present
+    if (base_path.length() >= 4 && base_path.substr(base_path.length() - 4) == ".wav")
+    {
+        base_path = base_path.substr(0, base_path.length() - 4);
+    }
+    
+    int samples_per_slice = (int)resampled.size() / num_slices;
+    int saved_count = 0;
+    
+    for (int slice = 0; slice < num_slices; ++slice)
+    {
+        int slice_start = slice * samples_per_slice;
+        int slice_end = (slice == num_slices - 1) ? (int)resampled.size() : (slice + 1) * samples_per_slice;
+        
+        std::vector<short> slice_data;
+        slice_data.reserve(slice_end - slice_start);
+        for (int i = slice_start; i < slice_end; ++i)
+        {
+            slice_data.push_back(resampled[i]);
+        }
+        
+        // Generate filename: base-1.wav, base-2.wav, etc.
+        std::string slice_filename = base_path + "-" + std::to_string(slice + 1) + ".wav";
+        
+        std::ofstream out(slice_filename, std::ios::binary);
+        if (out) {
+            // Write WAV Header
+            uint32_t dataSize = (uint32_t)slice_data.size() * sizeof(short);
+            uint32_t fileSize = dataSize + 36;
+            
+            out.write("RIFF", 4);
+            out.write((const char*)&fileSize, 4);
+            out.write("WAVE", 4);
+            out.write("fmt ", 4);
+            
+            uint32_t fmtSize = 16;
+            uint16_t audioFormat = 1; // PCM
+            uint16_t numChannels = 1;
+            uint32_t sampleRate = 17500;
+            uint32_t byteRate = sampleRate * numChannels * sizeof(short);
+            uint16_t blockAlign = numChannels * sizeof(short);
+            uint16_t bitsPerSample = 16;
+            
+            out.write((const char*)&fmtSize, 4);
+            out.write((const char*)&audioFormat, 2);
+            out.write((const char*)&numChannels, 2);
+            out.write((const char*)&sampleRate, 4);
+            out.write((const char*)&byteRate, 4);
+            out.write((const char*)&blockAlign, 2);
+            out.write((const char*)&bitsPerSample, 2);
+            
+            out.write("data", 4);
+            out.write((const char*)&dataSize, 4);
+            
+            // Write Data
+            out.write((char*)slice_data.data(), dataSize);
+            saved_count++;
+        }
+    }
+    
+    if (saved_count == num_slices) {
+        status_message = "Exported " + std::to_string(num_slices) + " slices to " + base_path + "-*.wav";
+    } else {
+        status_message = "Exported " + std::to_string(saved_count) + " of " + std::to_string(num_slices) + " slices";
     }
 }
