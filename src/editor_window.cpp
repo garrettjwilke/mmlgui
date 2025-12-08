@@ -112,8 +112,7 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("PCM tool...", nullptr, nullptr))
 			{
 				// Get current editor window position and offset for PCM tool
-				ImVec2 editor_pos = ImGui::GetWindowPos();
-				ImVec2 offset_pos = ImVec2(editor_pos.x + 300, editor_pos.y + 50); // Offset 50 pixels right and down
+				ImVec2 offset_pos = ImVec2(350, 50);
 				main_window.show_pcm_tool_window(&offset_pos);
 			}
 			ImGui::Separator();
