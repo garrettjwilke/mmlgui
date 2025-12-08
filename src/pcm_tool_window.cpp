@@ -339,6 +339,8 @@ void PCM_Tool_Window::display()
             }
             
             // Interaction logic for drag tabs
+            bool selection_changed = false;
+
             if (pcm_data.size() > 0)
             {
                 float width = plot_max.x - plot_min.x;
@@ -406,10 +408,13 @@ void PCM_Tool_Window::display()
                     {
                         float delta_x = ImGui::GetIO().MouseDelta.x;
                         int delta_samples = (int)(delta_x / x_step);
-                        *point += delta_samples;
-                        // Clamp again
-                        if (*point < 0) *point = 0;
-                        if (*point > (int)pcm_data.size()) *point = (int)pcm_data.size();
+                        if (delta_samples != 0) {
+                            *point += delta_samples;
+                            // Clamp again
+                            if (*point < 0) *point = 0;
+                            if (*point > (int)pcm_data.size()) *point = (int)pcm_data.size();
+                            selection_changed = true;
+                        }
                     }
                     
                     // Draw tab
@@ -464,13 +469,18 @@ void PCM_Tool_Window::display()
             if (end_point > max_sample) end_point = max_sample;
             if (start_point >= end_point) start_point = end_point - 1;
 
-            ImGui::DragInt("Start Point", &start_point, 1.0f, 0, end_point - 1);
-            ImGui::DragInt("End Point", &end_point, 1.0f, start_point + 1, max_sample);
+            if (ImGui::DragInt("Start Point", &start_point, 1.0f, 0, end_point - 1)) selection_changed = true;
+            if (ImGui::DragInt("End Point", &end_point, 1.0f, start_point + 1, max_sample)) selection_changed = true;
+
+            // If preview is playing and selection changed, restart playback from the new start
+            bool is_playing = (preview_stream && !preview_stream->get_finished());
+            if (selection_changed && is_playing) {
+                start_preview(); // start_preview() stops the current stream first
+            }
             
             ImGui::Checkbox("Loop Preview", &preview_loop);
             ImGui::SameLine();
             
-            bool is_playing = (preview_stream && !preview_stream->get_finished());
             if (ImGui::Button(is_playing ? "Stop Preview" : "Preview"))
             {
                 if (is_playing)
@@ -497,6 +507,7 @@ void PCM_Tool_Window::display()
             bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
             if (save_clicked)
             {
+                stop_preview(); // Stop any playing preview before exporting
                 browse_save = true;
                 browse_open = false;
             }
@@ -504,6 +515,7 @@ void PCM_Tool_Window::display()
             bool export_window_clicked = ImGui::Button("Export to New Window");
             if (export_window_clicked)
             {
+                stop_preview(); // Stop preview before creating new window
                 export_to_new_window();
             }
 
