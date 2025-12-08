@@ -35,6 +35,7 @@ private:
     bool preview_loop;
     bool double_speed;
     std::shared_ptr<Audio_Stream> preview_stream;
+    int current_playback_position; // Current playback position in samples
 
     std::string status_message;
     std::string current_filename;

@@ -15,8 +15,8 @@
 class PCM_Preview_Stream : public Audio_Stream
 {
 public:
-    PCM_Preview_Stream(const std::vector<short>& data, int start, int end, int rate, bool loop)
-        : data(data), start(start), end(end), rate(rate), loop(loop), pos(0.0), step(0.0)
+    PCM_Preview_Stream(const std::vector<short>& data, int start, int end, int rate, bool loop, int* position_ptr)
+        : data(data), start(start), end(end), rate(rate), loop(loop), pos(0.0), step(0.0), position_ptr(position_ptr)
     {
         if (this->start < 0) this->start = 0;
         if (this->end > (int)this->data.size()) this->end = (int)this->data.size();
@@ -49,6 +49,19 @@ public:
 
         for (int i = 0; i < count; ++i)
         {
+            // Update current playback position (in original sample indices) before processing
+            if (position_ptr) {
+                int current_idx = start + (int)pos;
+                // Handle looping
+                if (loop && current_idx >= end) {
+                    current_idx = start + ((current_idx - start) % (end - start));
+                }
+                // Clamp to valid range
+                if (current_idx < start) current_idx = start;
+                if (current_idx > end) current_idx = end;
+                *position_ptr = current_idx;
+            }
+            
             int idx0 = start + (int)pos;
             int idx1 = idx0 + 1;
             
@@ -113,6 +126,7 @@ private:
     bool loop;
     double pos;
     double step;
+    int* position_ptr; // Pointer to update current playback position
 };
 
 PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_open(false), browse_save(false)
@@ -124,6 +138,7 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     end_point = 0;
     preview_loop = false;
     double_speed = false;
+    current_playback_position = -1;
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
 }
@@ -272,6 +287,24 @@ void PCM_Tool_Window::display()
                 
                 // End Point (Red) - Bottom Tab
                 handle_tab(&end_point, false, IM_COL32(255, 0, 0, 255), "##end_tab");
+                
+                // Draw playback position marker (Blue) if previewing
+                bool is_playing = (preview_stream && !preview_stream->get_finished());
+                if (is_playing && current_playback_position >= 0) {
+                    float x;
+                    if (pcm_data.size() > 1) {
+                        x = plot_min.x + current_playback_position * x_step;
+                    } else {
+                        x = plot_min.x + width * 0.5f;
+                    }
+                    
+                    // Clamp to box bounds
+                    if (x > plot_max.x) x = plot_max.x;
+                    if (x < plot_min.x) x = plot_min.x;
+                    
+                    // Draw blue vertical line for playback position
+                    draw_list->AddLine(ImVec2(x, plot_min.y), ImVec2(x, plot_max.y), IM_COL32(0, 150, 255, 255), 2.0f);
+                }
             }
             
             // Advance cursor past the waveform area (including padding)
@@ -607,10 +640,13 @@ void PCM_Tool_Window::start_preview()
     
     if (pcm_data.empty()) return;
     
+    // Reset playback position
+    current_playback_position = start_point;
+    
     // Create new stream
     // We copy the current pcm_data state to the stream to be safe
     std::shared_ptr<PCM_Preview_Stream> stream = std::make_shared<PCM_Preview_Stream>(
-        pcm_data, start_point, end_point, sample_rate, preview_loop
+        pcm_data, start_point, end_point, sample_rate, preview_loop, &current_playback_position
     );
     
     preview_stream = stream;
@@ -624,6 +660,7 @@ void PCM_Tool_Window::stop_preview()
         preview_stream->set_finished(true);
         preview_stream.reset();
     }
+    current_playback_position = -1; // Reset position when stopped
 }
 
 void PCM_Tool_Window::resample_and_save(const char* filename)
