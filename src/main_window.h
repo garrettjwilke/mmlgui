@@ -2,6 +2,8 @@
 #define MAIN_WINDOW_H
 
 #include "window.h"
+#include <vector>
+#include <string>
 
 //! FPS/version overlay
 class FPS_Overlay : public Window
@@ -30,6 +32,7 @@ class Main_Window : public Window
 		void show_config_window();
 		void show_export_window();
 		void show_pcm_tool_window();
+		void create_pcm_tool_window_with_data(const std::vector<short>& data, int rate, int channels, const std::string& name);
 		void show_ui_settings_window();
 		void update_all_editor_palettes(bool light_mode);
 		bool is_light_theme() const;

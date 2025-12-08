@@ -13,14 +13,19 @@ class PCM_Tool_Window : public Window
 public:
     PCM_Tool_Window();
     void display() override;
+    void close_request() override;
+    void load_pcm_data(const std::vector<short>& data, int rate, int ch, const std::string& name = "");
 
 private:
     void load_file(const char* filename);
     void save_file(const char* filename);
     void resample_and_save(const char* filename);
     void resample_and_save_slices(const char* base_filename);
+    void export_to_new_window();
     void start_preview();
     void stop_preview();
+    void show_close_warning();
+    void cleanup();
 
     ImGuiFs::Dialog fs;
     bool browse_open;

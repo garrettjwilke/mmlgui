@@ -459,6 +459,13 @@ void Main_Window::show_pcm_tool_window()
 	show_pcm_tool = true;
 }
 
+void Main_Window::create_pcm_tool_window_with_data(const std::vector<short>& data, int rate, int channels, const std::string& name)
+{
+	auto new_window = std::make_shared<PCM_Tool_Window>();
+	new_window->load_pcm_data(data, rate, channels, name);
+	children.push_back(new_window);
+}
+
 void Main_Window::show_ui_settings_window()
 {
 	debug_ui_window = true;

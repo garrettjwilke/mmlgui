@@ -1,5 +1,6 @@
 #include "pcm_tool_window.h"
 #include "imgui.h"
+#include "main_window.h"
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -158,11 +159,46 @@ float PCM_Tool_Window::WaveformGetter(void* data, int idx)
 
 void PCM_Tool_Window::display()
 {
-    if (!active) return;
+    // Safety check: if window became inactive unexpectedly, stop preview
+    if (!active)
+    {
+        stop_preview();
+        return;
+    }
+
+    // Handle close request flow
+    if (get_close_request() == Window::CLOSE_IN_PROGRESS && !modal_open)
+        show_close_warning();
+
+    if (get_close_request() == Window::CLOSE_OK)
+    {
+        cleanup();
+        active = false;
+        return;
+    }
 
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("PCM Tool", &active))
+    std::string window_title = "PCM Tool";
+    if (!current_filename.empty()) {
+        window_title += " - " + current_filename;
+    }
+    window_title += "###PCMTool" + std::to_string(id); // ensure unique ID per instance
+    
+    // Use local variable to detect X button click
+    bool window_open = active;
+    if (ImGui::Begin(window_title.c_str(), &window_open))
     {
+        // If user clicked X button (window_open became false) and we haven't started close request, trigger it
+        if (!window_open && get_close_request() == Window::NO_CLOSE_REQUEST)
+        {
+            window_open = true; // Keep window open to show dialog
+            active = true; // Ensure active stays true
+            close_request();
+        }
+        else
+        {
+            active = window_open; // Sync with ImGui state
+        }
         bool load_clicked = ImGui::Button("Load WAV...");
         if (load_clicked)
         {
@@ -321,6 +357,10 @@ void PCM_Tool_Window::display()
                 
                 float handle_size = 10.0f;
                 
+                // Unique IDs per window to avoid ImGui ID collisions across multiple PCM windows
+                std::string start_tab_id = "##start_tab_" + std::to_string(id);
+                std::string end_tab_id   = "##end_tab_"   + std::to_string(id);
+
                 // Helper to draw and handle tab interaction
                 auto handle_tab = [&](int* point, bool is_top, ImU32 color, const char* id) {
                     if (*point < 0) *point = 0;
@@ -379,10 +419,10 @@ void PCM_Tool_Window::display()
                 };
 
                 // Start Point (Green) - Top Tab
-                handle_tab(&start_point, true, IM_COL32(0, 255, 0, 255), "##start_tab");
+                handle_tab(&start_point, true, IM_COL32(0, 255, 0, 255), start_tab_id.c_str());
                 
                 // End Point (Red) - Bottom Tab
-                handle_tab(&end_point, false, IM_COL32(255, 0, 0, 255), "##end_tab");
+                handle_tab(&end_point, false, IM_COL32(255, 0, 0, 255), end_tab_id.c_str());
                 
                 // Draw playback position marker (Blue) if previewing
                 bool is_playing = (preview_stream && !preview_stream->get_finished());
@@ -459,6 +499,12 @@ void PCM_Tool_Window::display()
             {
                 browse_save = true;
                 browse_open = false;
+            }
+            ImGui::SameLine();
+            bool export_window_clicked = ImGui::Button("Export to New Window");
+            if (export_window_clicked)
+            {
+                export_to_new_window();
             }
 
              if (browse_save)
@@ -1044,4 +1090,136 @@ void PCM_Tool_Window::resample_and_save_slices(const char* base_filename)
     } else {
         status_message = "Exported " + std::to_string(saved_count) + " of " + std::to_string(num_slices) + " slices";
     }
+}
+
+void PCM_Tool_Window::load_pcm_data(const std::vector<short>& data, int rate, int ch, const std::string& name)
+{
+    pcm_data = data;
+    sample_rate = rate;
+    channels = ch;
+    start_point = 0;
+    end_point = (int)data.size();
+    current_filename = name.empty() ? "Exported Selection" : name;
+    status_message = "Loaded " + current_filename;
+    stop_preview();
+}
+
+void PCM_Tool_Window::export_to_new_window()
+{
+    if (pcm_data.empty()) {
+        status_message = "No data to export";
+        return;
+    }
+
+    int target_rate = 17500;
+    
+    // 1. Extract selection
+    if (start_point < 0) start_point = 0;
+    if (end_point > (int)pcm_data.size()) end_point = (int)pcm_data.size();
+    if (start_point >= end_point) {
+        status_message = "Invalid selection range";
+        return;
+    }
+
+    std::vector<short> selection;
+    selection.reserve(end_point - start_point);
+    for(int i = start_point; i < end_point; ++i) {
+        selection.push_back(pcm_data[i]);
+    }
+
+    // 2. Resample
+    std::vector<short> resampled;
+    if (sample_rate == target_rate) {
+        resampled = selection;
+    } else {
+        double ratio = (double)sample_rate / (double)target_rate;
+        int new_length = (int)(selection.size() / ratio);
+        resampled.resize(new_length);
+        
+        for(int i = 0; i < new_length; ++i) {
+            double src_idx = i * ratio;
+            int idx0 = (int)src_idx;
+            int idx1 = idx0 + 1;
+            float frac = (float)(src_idx - idx0);
+            
+            if (idx1 >= (int)selection.size()) idx1 = idx0;
+            
+            float s0 = selection[idx0];
+            float s1 = selection[idx1];
+            resampled[i] = (short)(s0 + (s1 - s0) * frac);
+        }
+    }
+
+    // 3. Apply speed doubling if enabled
+    if (double_speed) {
+        std::vector<short> speed_doubled;
+        speed_doubled.reserve(resampled.size() / 2);
+        for (size_t i = 0; i < resampled.size(); i += 2) {
+            speed_doubled.push_back(resampled[i]);
+        }
+        resampled = speed_doubled;
+    }
+
+    // 4. Create new window with processed data
+    std::string export_name = current_filename.empty() ? "Exported Selection" : current_filename + " (exported)";
+    main_window.create_pcm_tool_window_with_data(resampled, target_rate, 1, export_name);
+        status_message = "Exported " + std::to_string(resampled.size()) + " samples to new window";
+}
+
+void PCM_Tool_Window::close_request()
+{
+    // If there's loaded data, show confirmation dialog
+    if (!pcm_data.empty())
+    {
+        close_req_state = Window::CLOSE_IN_PROGRESS;
+    }
+    else
+    {
+        close_req_state = Window::CLOSE_OK;
+    }
+}
+
+void PCM_Tool_Window::show_close_warning()
+{
+    modal_open = 1;
+    std::string modal_id = "Close PCM Editor###PCMClose" + std::to_string(id);
+    if (!ImGui::IsPopupOpen(modal_id.c_str()))
+        ImGui::OpenPopup(modal_id.c_str());
+    if(ImGui::BeginPopupModal(modal_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("Close PCM Editor?\nAll content will be lost.\n");
+        ImGui::Separator();
+
+        if (ImGui::Button("OK", ImVec2(120, 0)))
+        {
+            close_req_state = Window::CLOSE_OK;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0)))
+        {
+            close_req_state = Window::NO_CLOSE_REQUEST;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void PCM_Tool_Window::cleanup()
+{
+    // Stop preview playback
+    stop_preview();
+    
+    // Clear all PCM data to free RAM
+    pcm_data.clear();
+    pcm_data.shrink_to_fit(); // Release memory
+    
+    // Reset state
+    sample_rate = 0;
+    channels = 0;
+    start_point = 0;
+    end_point = 0;
+    current_filename.clear();
+    status_message = "Ready";
 }
