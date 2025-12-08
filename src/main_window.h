@@ -2,6 +2,7 @@
 #define MAIN_WINDOW_H
 
 #include "window.h"
+#include "imgui.h"
 #include <vector>
 #include <string>
 
@@ -31,7 +32,7 @@ class Main_Window : public Window
 		void show_about_window();
 		void show_config_window();
 		void show_export_window();
-		void show_pcm_tool_window();
+		void show_pcm_tool_window(const ImVec2* offset_from = nullptr);
 		void create_pcm_tool_window_with_data(const std::vector<short>& data, int rate, int channels, const std::string& name);
 		void show_ui_settings_window();
 		void update_all_editor_palettes(bool light_mode);
@@ -43,6 +44,7 @@ class Main_Window : public Window
 		bool show_config;
 		bool show_export;
 		bool show_pcm_tool;
+		ImVec2 pcm_tool_offset_pos;
 };
 
 extern Main_Window main_window;

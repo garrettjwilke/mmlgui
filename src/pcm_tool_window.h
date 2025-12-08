@@ -15,6 +15,7 @@ public:
     void display() override;
     void close_request() override;
     void load_pcm_data(const std::vector<short>& data, int rate, int ch, const std::string& name = "");
+    void set_initial_position(const ImVec2& pos);
 
 private:
     void load_file(const char* filename);
@@ -56,6 +57,10 @@ private:
     std::string status_message;
     std::string current_filename;
     std::string pending_save_path;
+    
+    // Initial position for window offset
+    ImVec2 initial_position;
+    bool position_set;
     
     // Waveform visualization helper
     static float WaveformGetter(void* data, int idx);

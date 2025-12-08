@@ -148,6 +148,8 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     num_slices = 2;
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
+    position_set = false;
+    initial_position = ImVec2(0, 0);
 }
 
 float PCM_Tool_Window::WaveformGetter(void* data, int idx)
@@ -178,11 +180,18 @@ void PCM_Tool_Window::display()
     }
 
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    
     std::string window_title = "PCM Tool";
     if (!current_filename.empty()) {
         window_title += " - " + current_filename;
     }
     window_title += "###PCMTool" + std::to_string(id); // ensure unique ID per instance
+    
+    // Set initial position offset if provided (only on first use)
+    if (position_set)
+    {
+        ImGui::SetNextWindowPos(initial_position, ImGuiCond_FirstUseEver);
+    }
     
     // Use local variable to detect X button click
     bool window_open = active;
@@ -1234,4 +1243,10 @@ void PCM_Tool_Window::cleanup()
     end_point = 0;
     current_filename.clear();
     status_message = "Ready";
+}
+
+void PCM_Tool_Window::set_initial_position(const ImVec2& pos)
+{
+    initial_position = pos;
+    position_set = true;
 }

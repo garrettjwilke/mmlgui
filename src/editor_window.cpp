@@ -86,7 +86,7 @@ void Editor_Window::display()
 
 	auto cpos = editor.GetCursorPosition();
 	ImGui::Begin(window_id.c_str(), &keep_open, /*ImGuiWindowFlags_HorizontalScrollbar |*/ ImGuiWindowFlags_MenuBar);
-	ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_Once);
+	ImGui::SetWindowSize(ImVec2(1000, 800), ImGuiCond_Once);
 
 	if (ImGui::BeginMenuBar())
 	{
@@ -107,6 +107,13 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
 			{
 				main_window.show_export_window();
+			}
+			if (ImGui::MenuItem("PCM tool...", nullptr, nullptr))
+			{
+				// Get current editor window position and offset for PCM tool
+				ImVec2 editor_pos = ImGui::GetWindowPos();
+				ImVec2 offset_pos = ImVec2(editor_pos.x + 50, editor_pos.y + 50); // Offset 50 pixels right and down
+				main_window.show_pcm_tool_window(&offset_pos);
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Close", "Ctrl+W"))

@@ -357,6 +357,7 @@ Main_Window::Main_Window()
 	, show_config(false)
 	, show_export(false)
 	, show_pcm_tool(false)
+	, pcm_tool_offset_pos(ImVec2(0, 0))
 {
 	children.push_back(std::make_shared<FPS_Overlay>());
 	children.push_back(std::make_shared<Editor_Window>());
@@ -433,8 +434,14 @@ void Main_Window::display()
 		bool overlay_active = find_child(WT_PCM_TOOL) != children.end();
 		if(!overlay_active)
 		{
-			children.push_back(std::make_shared<PCM_Tool_Window>());
+			auto pcm_window = std::make_shared<PCM_Tool_Window>();
+			if (pcm_tool_offset_pos.x != 0 || pcm_tool_offset_pos.y != 0)
+			{
+				pcm_window->set_initial_position(pcm_tool_offset_pos);
+			}
+			children.push_back(pcm_window);
 		}
+		pcm_tool_offset_pos = ImVec2(0, 0); // Reset after use
 	}
 	debug_window();
 }
@@ -454,8 +461,12 @@ void Main_Window::show_export_window()
 	show_export = true;
 }
 
-void Main_Window::show_pcm_tool_window()
+void Main_Window::show_pcm_tool_window(const ImVec2* offset_from)
 {
+	if (offset_from != nullptr)
+	{
+		pcm_tool_offset_pos = *offset_from;
+	}
 	show_pcm_tool = true;
 }
 
