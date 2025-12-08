@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <cstdlib>
+#include <sstream>
+#include <sys/stat.h>
 #include "stringf.h"
 #include "audio_manager.h"
 
@@ -157,7 +160,7 @@ void PCM_Tool_Window::display()
             ImVec2 pos = ImVec2(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
 
             // Ensure we don't pass browse_open directly if the dialog expects a trigger button press only once
-            const char* path = fs.chooseFileDialog(load_clicked, input_path, ".wav", "Load WAV", size, pos);
+            const char* path = fs.chooseFileDialog(load_clicked, input_path, ".wav;.mp3", "Load Audio", size, pos);
             if (strlen(path) > 0)
             {
                 load_file(path);
@@ -359,11 +362,54 @@ void PCM_Tool_Window::display()
 
 void PCM_Tool_Window::load_file(const char* filename)
 {
+    // Variables for MP3 conversion (need to be outside try block for cleanup)
+    std::string filepath = filename;
+    std::string temp_wav;
+    bool is_mp3 = false;
+    
     try {
+        // Check if file is MP3 and convert to WAV if needed
+        
+        // Check file extension
+        size_t dot_pos = filepath.find_last_of('.');
+        if (dot_pos != std::string::npos) {
+            std::string ext = filepath.substr(dot_pos + 1);
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (ext == "mp3") {
+                is_mp3 = true;
+            }
+        }
+        
+        // If MP3, convert to temporary WAV file
+        if (is_mp3) {
+            // Try to use ffmpeg to convert MP3 to WAV
+            temp_wav = filepath + ".temp.wav";
+            std::stringstream cmd;
+            cmd << "ffmpeg -i \"" << filepath << "\" -f wav -acodec pcm_s16le -ar 44100 -ac 2 -y \"" << temp_wav << "\" 2>&1";
+            
+            int result = system(cmd.str().c_str());
+            if (result != 0) {
+                // Try with sox as fallback
+                temp_wav = filepath + ".temp.wav";
+                cmd.str("");
+                cmd << "sox \"" << filepath << "\" -r 44100 -c 2 -b 16 \"" << temp_wav << "\" 2>&1";
+                result = system(cmd.str().c_str());
+                if (result != 0) {
+                    status_message = "MP3 conversion failed. Please install ffmpeg or sox.";
+                    return;
+                }
+            }
+            filepath = temp_wav;
+        }
+        
         // Simple WAV file reader (since we can't access Wave_File private members)
-        std::ifstream file(filename, std::ios::binary);
+        std::ifstream file(filepath, std::ios::binary);
         if (!file) {
-            status_message = "Failed to open WAV file";
+            status_message = "Failed to open audio file";
+            if (is_mp3 && !temp_wav.empty()) {
+                // Clean up temp file
+                remove(temp_wav.c_str());
+            }
             return;
         }
 
@@ -372,6 +418,9 @@ void PCM_Tool_Window::load_file(const char* filename)
         file.read(riff, 4);
         if (memcmp(riff, "RIFF", 4) != 0) {
             status_message = "Not a valid WAV file (RIFF header missing)";
+            if (is_mp3 && !temp_wav.empty()) {
+                remove(temp_wav.c_str());
+            }
             return;
         }
 
@@ -382,6 +431,9 @@ void PCM_Tool_Window::load_file(const char* filename)
         file.read(wave, 4);
         if (memcmp(wave, "WAVE", 4) != 0) {
             status_message = "Not a valid WAV file (WAVE header missing)";
+            if (is_mp3 && !temp_wav.empty()) {
+                remove(temp_wav.c_str());
+            }
             return;
         }
 
@@ -421,12 +473,18 @@ void PCM_Tool_Window::load_file(const char* filename)
             else if (memcmp(chunk_id, "data", 4) == 0) {
                 if (!found_fmt || num_channels == 0) {
                     status_message = "Invalid WAV format (missing format info)";
+                    if (is_mp3 && !temp_wav.empty()) {
+                        remove(temp_wav.c_str());
+                    }
                     return;
                 }
 
                 // Only support PCM (format 1) for now
                 if (audio_format != 1) {
                     status_message = "Unsupported audio format (only PCM supported)";
+                    if (is_mp3 && !temp_wav.empty()) {
+                        remove(temp_wav.c_str());
+                    }
                     return;
                 }
 
@@ -467,6 +525,9 @@ void PCM_Tool_Window::load_file(const char* filename)
                         }
                         else {
                             status_message = "Unsupported bit depth: " + std::to_string(bits_per_sample);
+                            if (is_mp3 && !temp_wav.empty()) {
+                                remove(temp_wav.c_str());
+                            }
                             return;
                         }
                         
@@ -488,6 +549,9 @@ void PCM_Tool_Window::load_file(const char* filename)
 
         if (!found_data || channel_data.empty() || channel_data[0].empty()) {
             status_message = "No audio data found in WAV file";
+            if (is_mp3 && !temp_wav.empty()) {
+                remove(temp_wav.c_str());
+            }
             return;
         }
 
@@ -515,8 +579,17 @@ void PCM_Tool_Window::load_file(const char* filename)
         current_filename = filename;
         strncpy(input_path, filename, sizeof(input_path)-1);
         
+        // Clean up temporary WAV file if we converted from MP3
+        if (is_mp3 && !temp_wav.empty()) {
+            remove(temp_wav.c_str());
+        }
+        
     } catch (std::exception& e) {
         status_message = "Error loading file: " + std::string(e.what());
+        // Clean up temporary file on error
+        if (is_mp3 && !temp_wav.empty()) {
+            remove(temp_wav.c_str());
+        }
     }
 }
 
