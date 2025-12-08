@@ -80,14 +80,25 @@ void PCM_Tool_Window::display()
             ImGui::PlotLines("Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, ImVec2(content_region.x, plot_height));
             
             // Get drawing context
+            ImGuiStyle& style = ImGui::GetStyle();
             ImVec2 plot_min = ImGui::GetItemRectMin();
             ImVec2 plot_max = ImGui::GetItemRectMax();
+            
+            // Adjust to inner graph area (excluding padding)
+            plot_min.x += style.FramePadding.x;
+            plot_max.x -= style.FramePadding.x;
+            plot_min.y += style.FramePadding.y;
+            plot_max.y -= style.FramePadding.y;
+
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             
             // Interaction logic for drag tabs
             if (pcm_data.size() > 0)
             {
-                float x_step = (plot_max.x - plot_min.x) / (float)pcm_data.size();
+                // Use (size - 1) to match PlotLines behavior which draws samples 0..N-1 across the width
+                float width = plot_max.x - plot_min.x;
+                float count = (float)(pcm_data.size() > 1 ? pcm_data.size() - 1 : 1);
+                float x_step = width / count;
                 float handle_size = 10.0f;
                 
                 // Helper to draw and handle tab interaction
@@ -96,6 +107,11 @@ void PCM_Tool_Window::display()
                     if (*point > (int)pcm_data.size()) *point = (int)pcm_data.size();
                     
                     float x = plot_min.x + (*point) * x_step;
+                    
+                    // Clamp visual position to plot bounds
+                    if (x > plot_max.x) x = plot_max.x;
+                    if (x < plot_min.x) x = plot_min.x;
+
                     ImVec2 tab_pos = is_top ? ImVec2(x, plot_min.y) : ImVec2(x, plot_max.y);
                     
                     // Triangle tab shape
@@ -138,14 +154,23 @@ void PCM_Tool_Window::display()
             ImGui::DragInt("End Point", &end_point, 1.0f, start_point + 1, max_sample);
             
             ImGui::Separator();
-            if (ImGui::Button("Export (17.5kHz Mono s16le)..."))
+            bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
+            if (save_clicked)
             {
                 browse_save = true;
+                browse_open = false;
             }
 
              if (browse_save)
             {
-                const char* path = fs.saveFileDialog(browse_save, input_path, "output.bin");
+                // Center the dialog
+                ImVec2 center = ImGui::GetIO().DisplaySize;
+                center.x *= 0.5f;
+                center.y *= 0.5f;
+                ImVec2 size(600, 400);
+                ImVec2 pos = ImVec2(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
+
+                const char* path = fs.saveFileDialog(save_clicked, input_path, "output.bin", NULL, "Save PCM", size, pos);
                 if (strlen(path) > 0)
                 {
                     resample_and_save(path);
@@ -256,7 +281,36 @@ void PCM_Tool_Window::resample_and_save(const char* filename)
     // 3. Save
     std::ofstream out(filename, std::ios::binary);
     if (out) {
-        out.write((char*)resampled.data(), resampled.size() * sizeof(short));
+        // Write WAV Header
+        uint32_t dataSize = (uint32_t)resampled.size() * sizeof(short);
+        uint32_t fileSize = dataSize + 36;
+        
+        out.write("RIFF", 4);
+        out.write((const char*)&fileSize, 4);
+        out.write("WAVE", 4);
+        out.write("fmt ", 4);
+        
+        uint32_t fmtSize = 16;
+        uint16_t audioFormat = 1; // PCM
+        uint16_t numChannels = 1;
+        uint32_t sampleRate = 17500;
+        uint32_t byteRate = sampleRate * numChannels * sizeof(short);
+        uint16_t blockAlign = numChannels * sizeof(short);
+        uint16_t bitsPerSample = 16;
+        
+        out.write((const char*)&fmtSize, 4);
+        out.write((const char*)&audioFormat, 2);
+        out.write((const char*)&numChannels, 2);
+        out.write((const char*)&sampleRate, 4);
+        out.write((const char*)&byteRate, 4);
+        out.write((const char*)&blockAlign, 2);
+        out.write((const char*)&bitsPerSample, 2);
+        
+        out.write("data", 4);
+        out.write((const char*)&dataSize, 4);
+        
+        // Write Data
+        out.write((char*)resampled.data(), dataSize);
         status_message = "Exported " + std::to_string(resampled.size()) + " samples to " + std::string(filename);
     } else {
         status_message = "Failed to write output file";
