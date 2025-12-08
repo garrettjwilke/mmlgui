@@ -36,6 +36,12 @@ private:
     bool double_speed;
     std::shared_ptr<Audio_Stream> preview_stream;
     int current_playback_position; // Current playback position in samples
+    
+    // Zoom state
+    bool zoom_enabled;
+    int zoom_point; // 0 = start point, 1 = end point
+    float zoom_level; // Zoom multiplier (1.0 = no zoom, higher = more zoom)
+    int zoom_window_samples; // Number of samples visible in zoom view
 
     std::string status_message;
     std::string current_filename;

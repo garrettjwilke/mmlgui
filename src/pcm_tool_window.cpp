@@ -139,6 +139,10 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     preview_loop = false;
     double_speed = false;
     current_playback_position = -1;
+    zoom_enabled = false;
+    zoom_point = 0; // Default to start point
+    zoom_level = 1.0f;
+    zoom_window_samples = 1000; // Default zoom window
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
 }
@@ -197,6 +201,29 @@ void PCM_Tool_Window::display()
             ImGui::SameLine();
             ImGui::Text("Length: %d samples", (int)pcm_data.size());
 
+            // Zoom controls
+            ImGui::Checkbox("Zoom", &zoom_enabled);
+            if (zoom_enabled) {
+                ImGui::SameLine();
+                if (ImGui::RadioButton("Start", zoom_point == 0)) zoom_point = 0;
+                ImGui::SameLine();
+                if (ImGui::RadioButton("End", zoom_point == 1)) zoom_point = 1;
+                ImGui::SameLine();
+                if (ImGui::Button("Zoom In")) {
+                    zoom_window_samples = (int)(zoom_window_samples * 0.5f);
+                    if (zoom_window_samples < 10) zoom_window_samples = 10;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Zoom Out")) {
+                    zoom_window_samples = (int)(zoom_window_samples * 2.0f);
+                    if (zoom_window_samples > (int)pcm_data.size()) zoom_window_samples = (int)pcm_data.size();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Reset")) {
+                    zoom_window_samples = 1000;
+                }
+            }
+
             // Waveform display with visible bounding box
             float plot_height = 150.0f;
             ImVec2 content_region = ImGui::GetContentRegionAvail();
@@ -220,21 +247,76 @@ void PCM_Tool_Window::display()
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + margin_y);
             
-            // Draw waveform inside the box
-            ImVec2 plot_size = ImVec2(plot_width - margin_x * 2.0f, plot_height);
-            ImGui::PlotLines("##Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, plot_size);
-            
             // Use the box bounds for marker calculations (markers can extend into the padding area)
             ImVec2 plot_min = ImVec2(box_min.x + 2.0f, box_min.y); // Markers can use full box height
             ImVec2 plot_max = ImVec2(box_max.x - 2.0f, box_max.y); // Markers can use full box height
             
+            // Calculate zoom window if enabled
+            int zoom_start_sample = 0;
+            int zoom_end_sample = (int)pcm_data.size();
+            int zoom_center_sample = 0;
+            std::vector<short> zoom_data;
+            
+            if (zoom_enabled && pcm_data.size() > 0) {
+                // Determine center point based on selected marker
+                if (zoom_point == 0) {
+                    zoom_center_sample = start_point;
+                } else {
+                    zoom_center_sample = end_point;
+                }
+                
+                // Calculate zoom window around center
+                int half_window = zoom_window_samples / 2;
+                zoom_start_sample = zoom_center_sample - half_window;
+                zoom_end_sample = zoom_center_sample + half_window;
+                
+                // Clamp to valid range
+                if (zoom_start_sample < 0) {
+                    zoom_end_sample += -zoom_start_sample;
+                    zoom_start_sample = 0;
+                }
+                if (zoom_end_sample > (int)pcm_data.size()) {
+                    zoom_start_sample -= (zoom_end_sample - (int)pcm_data.size());
+                    zoom_end_sample = (int)pcm_data.size();
+                    if (zoom_start_sample < 0) zoom_start_sample = 0;
+                }
+                
+                // Extract zoom window data
+                zoom_data.clear();
+                for (int i = zoom_start_sample; i < zoom_end_sample; ++i) {
+                    if (i >= 0 && i < (int)pcm_data.size()) {
+                        zoom_data.push_back(pcm_data[i]);
+                    }
+                }
+            }
+            
+            // Draw waveform inside the box (zoomed or full view)
+            ImVec2 plot_size = ImVec2(plot_width - margin_x * 2.0f, plot_height);
+            if (zoom_enabled && !zoom_data.empty()) {
+                // Draw zoomed waveform
+                ImGui::PlotLines("##Waveform", WaveformGetter, (void*)&zoom_data, (int)zoom_data.size(), 0, NULL, -1.0f, 1.0f, plot_size);
+            } else {
+                // Draw full waveform
+                ImGui::PlotLines("##Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, plot_size);
+            }
+            
             // Interaction logic for drag tabs
             if (pcm_data.size() > 0)
             {
-                // Map sample indices 0 to pcm_data.size() across the box width
                 float width = plot_max.x - plot_min.x;
-                float count = (float)(pcm_data.size() > 1 ? pcm_data.size() : 1);
-                float x_step = width / count;
+                float x_step;
+                float count;
+                
+                if (zoom_enabled && !zoom_data.empty()) {
+                    // In zoom mode, map zoom window samples to display width
+                    count = (float)(zoom_data.size() > 1 ? zoom_data.size() : 1);
+                    x_step = width / count;
+                } else {
+                    // Normal mode: map all samples to display width
+                    count = (float)(pcm_data.size() > 1 ? pcm_data.size() : 1);
+                    x_step = width / count;
+                }
+                
                 float handle_size = 10.0f;
                 
                 // Helper to draw and handle tab interaction
@@ -244,11 +326,22 @@ void PCM_Tool_Window::display()
                     
                     // Map sample index to X position within the box bounds
                     float x;
-                    if (pcm_data.size() > 1) {
-                        x = plot_min.x + (*point) * x_step;
+                    if (zoom_enabled && !zoom_data.empty()) {
+                        // In zoom mode: map point relative to zoom window
+                        int point_in_zoom = *point - zoom_start_sample;
+                        if (zoom_data.size() > 1) {
+                            x = plot_min.x + point_in_zoom * x_step;
+                        } else {
+                            x = plot_min.x + width * 0.5f;
+                        }
                     } else {
-                        // Special case: only one sample, center it
-                        x = plot_min.x + width * 0.5f;
+                        // Normal mode: map point to full range
+                        if (pcm_data.size() > 1) {
+                            x = plot_min.x + (*point) * x_step;
+                        } else {
+                            // Special case: only one sample, center it
+                            x = plot_min.x + width * 0.5f;
+                        }
                     }
                     
                     // Clamp to box bounds (markers must stay inside the visible box)
@@ -270,7 +363,8 @@ void PCM_Tool_Window::display()
                     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
                     {
                         float delta_x = ImGui::GetIO().MouseDelta.x;
-                        *point += (int)(delta_x / x_step);
+                        int delta_samples = (int)(delta_x / x_step);
+                        *point += delta_samples;
                         // Clamp again
                         if (*point < 0) *point = 0;
                         if (*point > (int)pcm_data.size()) *point = (int)pcm_data.size();
@@ -292,24 +386,37 @@ void PCM_Tool_Window::display()
                 bool is_playing = (preview_stream && !preview_stream->get_finished());
                 if (is_playing && current_playback_position >= 0) {
                     float x;
-                    if (pcm_data.size() > 1) {
-                        x = plot_min.x + current_playback_position * x_step;
+                    if (zoom_enabled && !zoom_data.empty()) {
+                        // In zoom mode: map position relative to zoom window
+                        int pos_in_zoom = current_playback_position - zoom_start_sample;
+                        if (zoom_data.size() > 1 && pos_in_zoom >= 0 && pos_in_zoom < (int)zoom_data.size()) {
+                            x = plot_min.x + pos_in_zoom * x_step;
+                        } else {
+                            // Position is outside zoom window, don't draw
+                            x = -1;
+                        }
                     } else {
-                        x = plot_min.x + width * 0.5f;
+                        // Normal mode
+                        if (pcm_data.size() > 1) {
+                            x = plot_min.x + current_playback_position * x_step;
+                        } else {
+                            x = plot_min.x + width * 0.5f;
+                        }
                     }
                     
-                    // Clamp to box bounds
-                    if (x > plot_max.x) x = plot_max.x;
-                    if (x < plot_min.x) x = plot_min.x;
-                    
-                    // Draw blue vertical line for playback position
-                    draw_list->AddLine(ImVec2(x, plot_min.y), ImVec2(x, plot_max.y), IM_COL32(0, 150, 255, 255), 2.0f);
+                    // Draw blue vertical line for playback position (if visible in zoom window)
+                    if (x >= 0) {
+                        // Clamp to box bounds
+                        if (x > plot_max.x) x = plot_max.x;
+                        if (x < plot_min.x) x = plot_min.x;
+                        draw_list->AddLine(ImVec2(x, plot_min.y), ImVec2(x, plot_max.y), IM_COL32(0, 150, 255, 255), 2.0f);
+                    }
                 }
             }
             
             // Advance cursor past the waveform area (including padding)
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + margin_y);
-
+            
             // Sliders for Start/End
             int max_sample = (int)pcm_data.size();
             if (end_point > max_sample) end_point = max_sample;
