@@ -4,7 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cmath>
-#include "wave.h"
+#include <cstring>
 #include "stringf.h"
 #include "audio_manager.h"
 
@@ -179,10 +179,14 @@ void PCM_Tool_Window::display()
             ImGui::Text("Length: %d samples", (int)pcm_data.size());
 
             // Waveform display
+            // Add margin for markers
+            float margin_x = 10.0f; 
             ImVec2 content_region = ImGui::GetContentRegionAvail();
+            content_region.x -= margin_x * 2.0f;
             float plot_height = 150.0f;
             content_region.y = plot_height;
             
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
             ImGui::PlotLines("Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, ImVec2(content_region.x, plot_height));
             
             // Get drawing context
@@ -201,9 +205,10 @@ void PCM_Tool_Window::display()
             // Interaction logic for drag tabs
             if (pcm_data.size() > 0)
             {
-                // Use (size - 1) to match PlotLines behavior which draws samples 0..N-1 across the width
+                // Scale from sample 0 to pcm_data.size() across the full width
+                // This ensures end_point = pcm_data.size() maps to plot_max.x
                 float width = plot_max.x - plot_min.x;
-                float count = (float)(pcm_data.size() > 1 ? pcm_data.size() - 1 : 1);
+                float count = (float)(pcm_data.size() > 0 ? pcm_data.size() : 1);
                 float x_step = width / count;
                 float handle_size = 10.0f;
                 
@@ -226,6 +231,7 @@ void PCM_Tool_Window::display()
                     ImVec2 p3 = ImVec2(tab_pos.x + handle_size/2, tab_pos.y + (is_top ? -handle_size : handle_size));
                     
                     // Invisible button for interaction
+                    // Center the button on the tab tip (p1) horizontally, and cover the triangle vertically
                     ImGui::SetCursorScreenPos(ImVec2(p2.x, is_top ? p2.y : p1.y));
                     ImGui::InvisibleButton(id, ImVec2(handle_size, handle_size));
                     
@@ -338,32 +344,148 @@ void PCM_Tool_Window::display()
 void PCM_Tool_Window::load_file(const char* filename)
 {
     try {
-        // Use the default constructor and then read
-        Wave_File wav(0,0,0);
-        if (wav.read(filename) != 0) {
-             status_message = "Failed to read WAV file";
-             return;
-        }
-
-        sample_rate = wav.get_rate();
-        channels = wav.get_channels();
-        const auto& data = wav.get_data();
-
-        if (data.empty()) {
-            status_message = "No data in WAV file";
+        // Simple WAV file reader (since we can't access Wave_File private members)
+        std::ifstream file(filename, std::ios::binary);
+        if (!file) {
+            status_message = "Failed to open WAV file";
             return;
         }
 
+        // Read RIFF header
+        char riff[4];
+        file.read(riff, 4);
+        if (memcmp(riff, "RIFF", 4) != 0) {
+            status_message = "Not a valid WAV file (RIFF header missing)";
+            return;
+        }
+
+        uint32_t file_size;
+        file.read((char*)&file_size, 4);
+
+        char wave[4];
+        file.read(wave, 4);
+        if (memcmp(wave, "WAVE", 4) != 0) {
+            status_message = "Not a valid WAV file (WAVE header missing)";
+            return;
+        }
+
+        // Read chunks
+        uint16_t num_channels = 0;
+        uint32_t sample_rate_val = 0;
+        uint16_t bits_per_sample = 0;
+        uint16_t audio_format = 0;
+        std::vector<std::vector<int16_t>> channel_data;
+        bool found_fmt = false;
+        bool found_data = false;
+
+        while (file && !found_data) {
+            char chunk_id[4];
+            uint32_t chunk_size;
+            file.read(chunk_id, 4);
+            if (file.gcount() != 4) break;
+            file.read((char*)&chunk_size, 4);
+            if (file.gcount() != 4) break;
+
+            if (memcmp(chunk_id, "fmt ", 4) == 0) {
+                file.read((char*)&audio_format, 2);
+                file.read((char*)&num_channels, 2);
+                file.read((char*)&sample_rate_val, 4);
+                uint32_t byte_rate;
+                file.read((char*)&byte_rate, 4);
+                uint16_t block_align;
+                file.read((char*)&block_align, 2);
+                file.read((char*)&bits_per_sample, 2);
+                
+                // Skip any extra format data
+                if (chunk_size > 16) {
+                    file.seekg(chunk_size - 16, std::ios::cur);
+                }
+                found_fmt = true;
+            }
+            else if (memcmp(chunk_id, "data", 4) == 0) {
+                if (!found_fmt || num_channels == 0) {
+                    status_message = "Invalid WAV format (missing format info)";
+                    return;
+                }
+
+                // Only support PCM (format 1) for now
+                if (audio_format != 1) {
+                    status_message = "Unsupported audio format (only PCM supported)";
+                    return;
+                }
+
+                channel_data.resize(num_channels);
+                size_t bytes_per_sample = bits_per_sample / 8;
+                size_t samples = chunk_size / (num_channels * bytes_per_sample);
+                
+                // Read and convert samples based on bit depth
+                for (size_t i = 0; i < samples; ++i) {
+                    for (int ch = 0; ch < num_channels; ++ch) {
+                        int32_t sample_value = 0;
+                        
+                        if (bits_per_sample == 8) {
+                            uint8_t sample_u8;
+                            file.read((char*)&sample_u8, 1);
+                            // Convert unsigned 8-bit to signed 16-bit
+                            sample_value = ((int32_t)sample_u8 - 128) << 8;
+                        }
+                        else if (bits_per_sample == 16) {
+                            int16_t sample_s16;
+                            file.read((char*)&sample_s16, 2);
+                            sample_value = (int32_t)sample_s16;
+                        }
+                        else if (bits_per_sample == 24) {
+                            // Read 24-bit as 3 bytes (little-endian)
+                            uint8_t bytes[3];
+                            file.read((char*)bytes, 3);
+                            // Sign extend to 32-bit
+                            int32_t sample_24 = (int32_t)(bytes[0] | (bytes[1] << 8) | (bytes[2] << 16));
+                            if (sample_24 & 0x800000) sample_24 |= 0xFF000000; // Sign extend
+                            sample_value = sample_24 >> 8; // Convert to 16-bit range
+                        }
+                        else if (bits_per_sample == 32) {
+                            int32_t sample_s32;
+                            file.read((char*)&sample_s32, 4);
+                            // Convert 32-bit to 16-bit range
+                            sample_value = sample_s32 >> 16;
+                        }
+                        else {
+                            status_message = "Unsupported bit depth: " + std::to_string(bits_per_sample);
+                            return;
+                        }
+                        
+                        // Clamp to 16-bit range
+                        if (sample_value > 32767) sample_value = 32767;
+                        if (sample_value < -32768) sample_value = -32768;
+                        
+                        channel_data[ch].push_back((int16_t)sample_value);
+                    }
+                }
+                found_data = true;
+            }
+            else {
+                // Skip unknown chunks
+                if (chunk_size % 2 == 1) chunk_size++; // Align to word boundary
+                file.seekg(chunk_size, std::ios::cur);
+            }
+        }
+
+        if (!found_data || channel_data.empty() || channel_data[0].empty()) {
+            status_message = "No audio data found in WAV file";
+            return;
+        }
+
+        sample_rate = sample_rate_val;
+        channels = num_channels;
+        size_t samples = channel_data[0].size();
+
         // Convert to mono for display and processing
-        // data is [channel][sample]
-        size_t samples = data[0].size();
         pcm_data.resize(samples);
-        
         for(size_t i = 0; i < samples; ++i) {
             int32_t sum = 0;
             for(int c = 0; c < channels; ++c) {
-                if (i < data[c].size())
-                    sum += data[c][i];
+                if (i < channel_data[c].size())
+                    sum += channel_data[c][i];
             }
             pcm_data[i] = (short)(sum / channels);
         }
