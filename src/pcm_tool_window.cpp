@@ -123,6 +123,7 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     start_point = 0;
     end_point = 0;
     preview_loop = false;
+    double_speed = false;
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
 }
@@ -297,6 +298,8 @@ void PCM_Tool_Window::display()
             }
 
             ImGui::Separator();
+            ImGui::Checkbox("Double Speed", &double_speed);
+            ImGui::SameLine();
             bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
             if (save_clicked)
             {
@@ -667,7 +670,17 @@ void PCM_Tool_Window::resample_and_save(const char* filename)
         }
     }
 
-    // 3. Save
+    // 3. Apply speed doubling if enabled (skip every other sample)
+    if (double_speed) {
+        std::vector<short> speed_doubled;
+        speed_doubled.reserve(resampled.size() / 2);
+        for (size_t i = 0; i < resampled.size(); i += 2) {
+            speed_doubled.push_back(resampled[i]);
+        }
+        resampled = speed_doubled;
+    }
+
+    // 4. Save
     std::ofstream out(filename, std::ios::binary);
     if (out) {
         // Write WAV Header

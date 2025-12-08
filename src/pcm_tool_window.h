@@ -33,6 +33,7 @@ private:
     int end_point;
     
     bool preview_loop;
+    bool double_speed;
     std::shared_ptr<Audio_Stream> preview_stream;
 
     std::string status_message;
