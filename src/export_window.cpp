@@ -82,7 +82,10 @@ void Export_Window::display()
 		}
 		
 		ImGui::Separator();
-		ImGui::TextWrapped("%s", status_message.c_str());
+		ImGui::Text("Output:");
+		ImGui::BeginChild("export_output", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), false, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::TextUnformatted(status_message.c_str());
+		ImGui::EndChild();
 	}
 	ImGui::End();
 }
@@ -132,11 +135,14 @@ void Export_Window::run_export()
 
 		MDSDRV_Linker linker;
 		std::string log;
+		log = "Processing " + std::to_string(input_files.size()) + " file(s)...\n\n";
 
 		for (size_t i = 0; i < input_files.size(); ++i) {
 			const auto& file = input_files[i];
 			std::string ext = fs::path(file).extension().string();
 			std::string filename_stem = fs::path(file).stem().string(); // Equivalent to get_filename in mdslink
+			
+			log += "[" + std::to_string(i+1) + "/" + std::to_string(input_files.size()) + "] " + file + "\n";
 
 			RIFF mds(0);
 			
@@ -165,6 +171,8 @@ void Export_Window::run_export()
 			
 			linker.add_song(mds, filename_stem);
 		}
+		
+		log += "\n";
 
 		fs::path out_dir(output_path);
 		if (!fs::exists(out_dir)) {
@@ -174,29 +182,35 @@ void Export_Window::run_export()
 		// Write seq
 		if (strlen(seq_filename) > 0) {
 			fs::path p = out_dir / seq_filename;
+			log += "Writing " + p.string() + "...\n";
 			auto bytes = linker.get_seq_data();
 			std::ofstream out(p, std::ios::binary);
 			out.write((char*)bytes.data(), bytes.size());
+			log += "  Wrote " + std::to_string(bytes.size()) + " bytes\n";
 		}
 
 		// Write pcm
 		if (strlen(pcm_filename) > 0) {
 			fs::path p = out_dir / pcm_filename;
+			log += "Writing " + p.string() + "...\n";
 			auto bytes = linker.get_pcm_data();
 			std::ofstream out(p, std::ios::binary);
 			out.write((char*)bytes.data(), bytes.size());
-			log += linker.get_statistics();
+			log += "  Wrote " + std::to_string(bytes.size()) + " bytes\n";
+			log += "\n" + linker.get_statistics();
 		}
 
 		// Write header
 		if (strlen(header_filename) > 0) {
 			fs::path p = out_dir / header_filename;
+			log += "Writing " + p.string() + "...\n";
 			auto bytes = linker.get_c_header();
 			std::ofstream out(p);
 			out.write((char*)bytes.data(), bytes.size());
+			log += "  Wrote " + std::to_string(bytes.size()) + " bytes\n";
 		}
 		
-		status_message = "Export Successful!\n" + log;
+		status_message = "Export Successful!\n\n" + log;
 
 	} catch (const std::exception& e) {
 		status_message = std::string("Error: ") + e.what();
