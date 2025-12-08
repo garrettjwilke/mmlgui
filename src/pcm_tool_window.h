@@ -30,6 +30,7 @@ private:
     
     std::string status_message;
     std::string current_filename;
+    std::string pending_save_path;
     
     // Waveform visualization helper
     static float WaveformGetter(void* data, int idx);

@@ -170,16 +170,44 @@ void PCM_Tool_Window::display()
                 ImVec2 size(600, 400);
                 ImVec2 pos = ImVec2(center.x - size.x * 0.5f, center.y - size.y * 0.5f);
 
-                const char* path = fs.saveFileDialog(save_clicked, input_path, "output.bin", NULL, "Save PCM", size, pos);
+                const char* path = fs.saveFileDialog(save_clicked, input_path, "output.wav", ".wav", "Save PCM", size, pos);
                 if (strlen(path) > 0)
                 {
-                    resample_and_save(path);
-                    browse_save = false;
+                    if (ImGuiFs::FileExists(path))
+                    {
+                        pending_save_path = path;
+                        ImGui::OpenPopup("Overwrite?");
+                        browse_save = false;
+                    }
+                    else
+                    {
+                        resample_and_save(path);
+                        browse_save = false;
+                    }
                 }
                 else if (fs.hasUserJustCancelledDialog())
                 {
                     browse_save = false;
                 }
+            }
+
+            if (ImGui::BeginPopupModal("Overwrite?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                ImGui::Text("File already exists.\nOverwrite?");
+                ImGui::Separator();
+
+                if (ImGui::Button("Yes", ImVec2(120, 0)))
+                {
+                    resample_and_save(pending_save_path.c_str());
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SetItemDefaultFocus();
+                ImGui::SameLine();
+                if (ImGui::Button("No", ImVec2(120, 0)))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
         }
         
