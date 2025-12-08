@@ -178,37 +178,36 @@ void PCM_Tool_Window::display()
             ImGui::SameLine();
             ImGui::Text("Length: %d samples", (int)pcm_data.size());
 
-            // Waveform display
-            // Add margin for markers
-            float margin_x = 10.0f; 
-            ImVec2 content_region = ImGui::GetContentRegionAvail();
-            content_region.x -= margin_x * 2.0f;
+            // Waveform display with visible bounding box
             float plot_height = 150.0f;
-            content_region.y = plot_height;
+            ImVec2 content_region = ImGui::GetContentRegionAvail();
+            float plot_width = content_region.x;
             
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
-            ImGui::PlotLines("Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, ImVec2(content_region.x, plot_height));
+            // Define the visible box bounds (with margins for markers)
+            float margin_x = 15.0f; // Margin to ensure markers are visible
+            ImVec2 box_min = ImGui::GetCursorScreenPos();
+            box_min.x += margin_x;
+            ImVec2 box_max = ImVec2(box_min.x + plot_width - margin_x * 2.0f, box_min.y + plot_height);
             
-            // Get drawing context
-            ImGuiStyle& style = ImGui::GetStyle();
-            ImVec2 plot_min = ImGui::GetItemRectMin();
-            ImVec2 plot_max = ImGui::GetItemRectMax();
-            
-            // Adjust to inner graph area (excluding padding)
-            plot_min.x += style.FramePadding.x;
-            plot_max.x -= style.FramePadding.x;
-            plot_min.y += style.FramePadding.y;
-            plot_max.y -= style.FramePadding.y;
-
+            // Draw the bounding box
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(box_min, box_max, IM_COL32(200, 200, 200, 255), 0.0f, 0, 1.0f);
+            
+            // Draw waveform inside the box
+            ImVec2 plot_size = ImVec2(plot_width - margin_x * 2.0f, plot_height);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + margin_x);
+            ImGui::PlotLines("##Waveform", WaveformGetter, (void*)&pcm_data, (int)pcm_data.size(), 0, NULL, -1.0f, 1.0f, plot_size);
+            
+            // Use the box bounds for marker calculations (not the PlotLines widget bounds)
+            ImVec2 plot_min = ImVec2(box_min.x + 2.0f, box_min.y + 2.0f); // Small inner margin
+            ImVec2 plot_max = ImVec2(box_max.x - 2.0f, box_max.y - 2.0f); // Small inner margin
             
             // Interaction logic for drag tabs
             if (pcm_data.size() > 0)
             {
-                // Scale from sample 0 to pcm_data.size() across the full width
-                // This ensures end_point = pcm_data.size() maps to plot_max.x
+                // Map sample indices 0 to pcm_data.size() across the box width
                 float width = plot_max.x - plot_min.x;
-                float count = (float)(pcm_data.size() > 0 ? pcm_data.size() : 1);
+                float count = (float)(pcm_data.size() > 1 ? pcm_data.size() : 1);
                 float x_step = width / count;
                 float handle_size = 10.0f;
                 
@@ -217,9 +216,16 @@ void PCM_Tool_Window::display()
                     if (*point < 0) *point = 0;
                     if (*point > (int)pcm_data.size()) *point = (int)pcm_data.size();
                     
-                    float x = plot_min.x + (*point) * x_step;
+                    // Map sample index to X position within the box bounds
+                    float x;
+                    if (pcm_data.size() > 1) {
+                        x = plot_min.x + (*point) * x_step;
+                    } else {
+                        // Special case: only one sample, center it
+                        x = plot_min.x + width * 0.5f;
+                    }
                     
-                    // Clamp visual position to plot bounds
+                    // Clamp to box bounds (markers must stay inside the visible box)
                     if (x > plot_max.x) x = plot_max.x;
                     if (x < plot_min.x) x = plot_min.x;
 
