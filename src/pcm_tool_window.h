@@ -3,8 +3,10 @@
 
 #include "window.h"
 #include "addons/imguifilesystem/imguifilesystem.h"
+#include "audio_manager.h"
 #include <vector>
 #include <string>
+#include <memory>
 
 class PCM_Tool_Window : public Window
 {
@@ -16,6 +18,8 @@ private:
     void load_file(const char* filename);
     void save_file(const char* filename);
     void resample_and_save(const char* filename);
+    void start_preview();
+    void stop_preview();
 
     ImGuiFs::Dialog fs;
     bool browse_open;
@@ -28,6 +32,9 @@ private:
     int start_point;
     int end_point;
     
+    bool preview_loop;
+    std::shared_ptr<Audio_Stream> preview_stream;
+
     std::string status_message;
     std::string current_filename;
     std::string pending_save_path;

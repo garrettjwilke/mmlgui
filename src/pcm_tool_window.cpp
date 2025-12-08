@@ -6,6 +6,110 @@
 #include <cmath>
 #include "wave.h"
 #include "stringf.h"
+#include "audio_manager.h"
+
+// Simple Audio Stream for Preview
+class PCM_Preview_Stream : public Audio_Stream
+{
+public:
+    PCM_Preview_Stream(const std::vector<short>& data, int start, int end, int rate, bool loop)
+        : data(data), start(start), end(end), rate(rate), loop(loop), pos(0.0), step(0.0)
+    {
+        if (this->start < 0) this->start = 0;
+        if (this->end > (int)this->data.size()) this->end = (int)this->data.size();
+        if (this->start >= this->end) {
+             this->start = 0;
+             this->end = 0;
+        }
+    }
+
+    void setup_stream(uint32_t output_rate) override
+    {
+        if (output_rate > 0 && rate > 0)
+            step = (double)rate / (double)output_rate;
+        else
+            step = 1.0;
+        pos = 0.0;
+    }
+
+    int get_sample(WAVE_32BS* output, int count, int channels) override
+    {
+        if (start >= end) {
+            // Fill with silence if empty
+             for (int i = 0; i < count; ++i) {
+                output[i].L = 0;
+                output[i].R = 0;
+            }
+            if (!finished) set_finished(true);
+            return 0;
+        }
+
+        for (int i = 0; i < count; ++i)
+        {
+            int idx0 = start + (int)pos;
+            int idx1 = idx0 + 1;
+            
+            if (idx0 >= end)
+            {
+                if (loop)
+                {
+                     pos -= (end - start);
+                     idx0 = start + (int)pos;
+                     idx1 = idx0 + 1;
+                }
+                else
+                {
+                    // Silence rest of buffer
+                    for (; i < count; ++i) {
+                        output[i].L = 0;
+                        output[i].R = 0;
+                    }
+                    if (!finished) set_finished(true);
+                    return 0;
+                }
+            }
+            
+            if (idx1 >= end)
+            {
+                 if (loop) idx1 = start; 
+                 else idx1 = end - 1; // Clamp to last valid sample
+            }
+
+            // Ensure indices are within valid data bounds (safety check)
+            if (idx0 < 0) idx0 = 0;
+            if (idx1 < 0) idx1 = 0;
+            if (idx0 >= (int)data.size()) idx0 = (int)data.size() - 1;
+            if (idx1 >= (int)data.size()) idx1 = (int)data.size() - 1;
+
+            double frac = pos - (int)pos;
+            short s0 = data[idx0];
+            short s1 = data[idx1];
+            
+            // Linear interpolation
+            int32_t val = (int32_t)(s0 + (s1 - s0) * frac);
+
+            output[i].L = val;
+            output[i].R = val; 
+
+            pos += step;
+        }
+        
+        return 1;
+    }
+
+    void stop_stream() override
+    {
+    }
+
+private:
+    std::vector<short> data; // Copy of data for thread safety
+    int start;
+    int end;
+    int rate;
+    bool loop;
+    double pos;
+    double step;
+};
 
 PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_open(false), browse_save(false)
 {
@@ -14,6 +118,7 @@ PCM_Tool_Window::PCM_Tool_Window() : Window(), fs(true, false, true), browse_ope
     channels = 0;
     start_point = 0;
     end_point = 0;
+    preview_loop = false;
     status_message = "Ready";
     memset(input_path, 0, sizeof(input_path));
 }
@@ -153,6 +258,18 @@ void PCM_Tool_Window::display()
             ImGui::DragInt("Start Point", &start_point, 1.0f, 0, end_point - 1);
             ImGui::DragInt("End Point", &end_point, 1.0f, start_point + 1, max_sample);
             
+            ImGui::Checkbox("Loop Preview", &preview_loop);
+            ImGui::SameLine();
+            
+            bool is_playing = (preview_stream && !preview_stream->get_finished());
+            if (ImGui::Button(is_playing ? "Stop Preview" : "Preview"))
+            {
+                if (is_playing)
+                    stop_preview();
+                else
+                    start_preview();
+            }
+
             ImGui::Separator();
             bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
             if (save_clicked)
@@ -252,6 +369,8 @@ void PCM_Tool_Window::load_file(const char* filename)
 
         start_point = 0;
         end_point = (int)samples;
+        
+        stop_preview(); // Stop any existing preview
 
         status_message = "Loaded " + std::string(filename);
         current_filename = filename;
@@ -259,6 +378,36 @@ void PCM_Tool_Window::load_file(const char* filename)
         
     } catch (std::exception& e) {
         status_message = "Error loading file: " + std::string(e.what());
+    }
+}
+
+void PCM_Tool_Window::save_file(const char* filename)
+{
+    // Not used directly, implementing resample_and_save
+}
+
+void PCM_Tool_Window::start_preview()
+{
+    stop_preview();
+    
+    if (pcm_data.empty()) return;
+    
+    // Create new stream
+    // We copy the current pcm_data state to the stream to be safe
+    std::shared_ptr<PCM_Preview_Stream> stream = std::make_shared<PCM_Preview_Stream>(
+        pcm_data, start_point, end_point, sample_rate, preview_loop
+    );
+    
+    preview_stream = stream;
+    Audio_Manager::get().add_stream(preview_stream);
+}
+
+void PCM_Tool_Window::stop_preview()
+{
+    if (preview_stream)
+    {
+        preview_stream->set_finished(true);
+        preview_stream.reset();
     }
 }
 
