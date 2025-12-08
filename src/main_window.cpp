@@ -393,7 +393,9 @@ void Main_Window::display()
 		}
 		if (ImGui::MenuItem("PCM Tool...", nullptr, nullptr))
 		{
-			show_pcm_tool_window();
+			ImVec2 offset_pos = ImVec2(350, 50);
+			show_pcm_tool_window(&offset_pos);
+			//show_pcm_tool_window();
 		}
 		if (ImGui::MenuItem("About...", nullptr, nullptr))
 		{
