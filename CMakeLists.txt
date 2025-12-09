@@ -62,43 +62,13 @@ endif()
 add_subdirectory(libvgm)
 
 # Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
-# Determine the C compiler to use for MDSDRV build
-# On macOS, always use clang; on Windows/MSYS2, use gcc; otherwise use CMAKE_C_COMPILER or default to clang
-if(APPLE)
-	# Force clang on macOS
-	set(MDSDRV_CC "clang")
-elseif(WIN32 OR MINGW)
-	set(MDSDRV_CC "gcc")
-elseif(CMAKE_C_COMPILER)
-	# Use CMake's detected C compiler
-	get_filename_component(MDSDRV_CC_NAME ${CMAKE_C_COMPILER} NAME)
-	if(MDSDRV_CC_NAME MATCHES "clang")
-		set(MDSDRV_CC "clang")
-	else()
-		set(MDSDRV_CC "gcc")
-	endif()
-else()
-	# Default to clang on Unix-like systems
-	set(MDSDRV_CC "clang")
-endif()
-
-# Pass CC and YACC as environment variables to ensure sub-makes inherit them
-# Also define WIN32 when _WIN32 is defined (for MinGW/MSYS2 compatibility)
-# This ensures sjdefs.h includes windows.h which defines HANDLE, DWORD, etc.
-# Also override LUA_USE_LINUX with LUA_USE_WINDOWS on Windows to avoid POSIX headers
-# We pass -ULUA_USE_LINUX -DLUA_USE_WINDOWS via CFLAGS_EXTRA, which gets added to CFLAGS
-# Since CFLAGS comes after CPPFLAGS in compiler command line, our -U will undefine
-# the -DLUA_USE_LINUX from CPPFLAGS, and -DLUA_USE_WINDOWS will define the Windows version
-if(WIN32 OR MINGW)
-	set(MDSDRV_CFLAGS_EXTRA "-DWIN32 -ULUA_USE_LINUX -DLUA_USE_WINDOWS")
-else()
-	set(MDSDRV_CFLAGS_EXTRA "")
-endif()
-
+# Note: mdsdrv.bin is a cross-compiled binary for the target system, not Windows
+# So we build it using the standard Linux build process (works on Linux/macOS)
+# On Windows, this will use the MSYS2/MinGW environment which provides Linux-like tools
 add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" "CFLAGS_EXTRA=${MDSDRV_CFLAGS_EXTRA}" "YACC=${BISON_EXECUTABLE}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} CFLAGS_EXTRA="${MDSDRV_CFLAGS_EXTRA}" YACC=${BISON_EXECUTABLE} mdsdrv
+	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
-	COMMENT "Building mdsdrv.bin (using ${MDSDRV_CC})"
+	COMMENT "Building mdsdrv.bin"
 	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
 )
 
