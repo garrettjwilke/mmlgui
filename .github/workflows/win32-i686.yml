@@ -49,12 +49,20 @@ jobs:
       - name: Build mdsdrv.bin
         run: |
           cd MDSDRV
-          # Build all tools (sjasmplus, salvador, clownassembler_asm68k) and then mdsdrv.bin
-          # The generated parser files (lexical.c/h, syntactic.c/h) are already in the repo
-          # so we can build clownassembler_asm68k directly without regenerating them
-          # Use the Makefile which handles building tools in the correct order
-          make tools-build
-          make mdsdrv
+          # Build sjasmplus
+          make -C sjasmplus
+          # Build salvador (override CC to use gcc instead of clang)
+          make -C salvador CC=gcc
+          # Build clownassembler_asm68k (generated parser files are already in repo)
+          make -C clownassembler generators
+          make -C clownassembler clownassembler_asm68k
+          # Copy tools to tools directory (what the Makefile expects)
+          mkdir -p tools
+          cp sjasmplus/build/release/sjasmplus tools/
+          cp salvador/salvador tools/
+          cp clownassembler/clownassembler_asm68k tools/
+          # Build mdsdrv.bin using the Makefile (CC=gcc in case it needs to rebuild anything)
+          CC=gcc make mdsdrv
       
       - name: Configure CMake
         run: |
