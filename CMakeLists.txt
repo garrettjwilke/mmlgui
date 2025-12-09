@@ -63,8 +63,11 @@ add_subdirectory(libvgm)
 
 # Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
 # Determine the C compiler to use for MDSDRV build
-# On Windows/MSYS2, use gcc; otherwise try to use CMAKE_C_COMPILER or default to clang
-if(WIN32 OR MINGW)
+# On macOS, always use clang; on Windows/MSYS2, use gcc; otherwise use CMAKE_C_COMPILER or default to clang
+if(APPLE)
+	# Force clang on macOS
+	set(MDSDRV_CC "clang")
+elseif(WIN32 OR MINGW)
 	set(MDSDRV_CC "gcc")
 elseif(CMAKE_C_COMPILER)
 	# Use CMake's detected C compiler
@@ -79,9 +82,9 @@ else()
 	set(MDSDRV_CC "clang")
 endif()
 
-# Pass CC as both environment variable and make variable to ensure sub-makes inherit it
+# Pass CC and YACC as environment variables to ensure sub-makes inherit them
 add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} mdsdrv
+	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" "YACC=${BISON_EXECUTABLE}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} YACC=${BISON_EXECUTABLE} mdsdrv
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
 	COMMENT "Building mdsdrv.bin (using ${MDSDRV_CC})"
 	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
