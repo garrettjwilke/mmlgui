@@ -28,6 +28,8 @@ jobs:
             mingw-w64-x86_64-glfw
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-pkg-config
+            flex
+            bison
       
       - name: Checkout ctrmml rng-patterns branch
         run: |
@@ -43,6 +45,16 @@ jobs:
           if ! grep -q "#include <cstdint>" core.h; then
             sed -i 's|#include <memory>|#include <memory>\n#include <cstdint>|' core.h
           fi
+      
+      - name: Build mdsdrv.bin
+        run: |
+          cd MDSDRV
+          # Build all tools (sjasmplus, salvador, clownassembler_asm68k) and then mdsdrv.bin
+          # The generated parser files (lexical.c/h, syntactic.c/h) are already in the repo
+          # so we can build clownassembler_asm68k directly without regenerating them
+          # Use the Makefile which handles building tools in the correct order
+          make tools-build
+          make mdsdrv
       
       - name: Configure CMake
         run: |
