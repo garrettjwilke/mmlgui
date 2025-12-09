@@ -50,7 +50,8 @@ jobs:
         run: |
           cd MDSDRV
           # Build sjasmplus (define WIN32 for MSYS2/MinGW where _WIN32 is defined but WIN32 might not be)
-          make -C sjasmplus CPPFLAGS="-DWIN32"
+          # Add -DWIN32 to CFLAGS_EXTRA (which gets included in CXXFLAGS) to avoid overriding CPPFLAGS
+          make -C sjasmplus CFLAGS_EXTRA="-DWIN32"
           # Build salvador (override CC to use gcc instead of clang)
           make -C salvador CC=gcc
           # Build clownassembler_asm68k (generated parser files are already in repo)
