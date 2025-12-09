@@ -62,49 +62,7 @@ endif()
 add_subdirectory(libvgm)
 
 # Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
-# Note: mdsdrv.bin is a cross-compiled binary for the target system, not Windows
-# So we build it using the standard Linux build process (works on Linux/macOS)
-# On Windows, this will use the MSYS2/MinGW environment which provides Linux-like tools
-# 
-# Build clownassembler using CMake instead of Make to avoid Bison/Yacc issues
-# The generated parser files (syntactic.c/h, lexical.c/h) are already in the repo
-set(CLOWNASM_BUILD_DIR ${CMAKE_BINARY_DIR}/MDSDRV/clownassembler)
-set(CLOWNASM_BIN ${CLOWNASM_BUILD_DIR}/clownassembler_asm68k)
-
-add_custom_command(
-	OUTPUT ${CLOWNASM_BIN}
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${CLOWNASM_BUILD_DIR}
-	COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler -B ${CLOWNASM_BUILD_DIR}
-	COMMAND ${CMAKE_COMMAND} --build ${CLOWNASM_BUILD_DIR} --target clownassembler_asm68k
-	COMMENT "Building clownassembler_asm68k with CMake"
-)
-
-# Place clownassembler where the MDSDRV Makefile expects it
-# The Makefile has a target "clownassembler/clownassembler_asm68k" that tries to rebuild it
-# By creating the file first and marking it as up-to-date, we prevent Make from rebuilding
-add_custom_command(
-	OUTPUT ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k
-	DEPENDS ${CLOWNASM_BIN}
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CLOWNASM_BIN} ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k
-	COMMENT "Placing clownassembler_asm68k for MDSDRV Makefile"
-)
-
-# Build the other tools that MDSDRV needs (salvador, sjasmplus)
-# These are built via Make, but clownassembler is built via CMake above
-add_custom_command(
-	OUTPUT ${CMAKE_SOURCE_DIR}/MDSDRV/tools/.tools_ready
-	DEPENDS ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k
-	# Build other tools (salvador and sjasmplus), but skip clownassembler since we built it with CMake
-	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV tools-salvador tools-sjasmplus
-	# Copy clownassembler to tools directory (what tools-clownassembler target does)
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/MDSDRV/tools
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k ${CMAKE_SOURCE_DIR}/MDSDRV/tools/clownassembler_asm68k
-	COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_SOURCE_DIR}/MDSDRV/tools/.tools_ready
-	COMMENT "Building MDSDRV tools (excluding clownassembler)"
-)
-
 add_custom_target(mdsdrv_bin
-	DEPENDS ${CMAKE_SOURCE_DIR}/MDSDRV/tools/.tools_ready
 	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
 	COMMENT "Building mdsdrv.bin"
