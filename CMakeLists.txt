@@ -61,6 +61,24 @@ endif()
 
 add_subdirectory(libvgm)
 
+# --- Build clownassembler_asm68k using CMake ---
+set(CLOWNASM_BUILD_DIR ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/build)
+set(CLOWNASM_EXE ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k)
+
+# Build clownassembler_asm68k using CMake
+add_custom_command(
+    OUTPUT ${CLOWNASM_EXE}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CLOWNASM_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler -B ${CLOWNASM_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} --build ${CLOWNASM_BUILD_DIR} --target clownassembler_asm68k
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CLOWNASM_BUILD_DIR}/clownassembler_asm68k ${CLOWNASM_EXE}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler
+    COMMENT "Building clownassembler_asm68k with CMake"
+    VERBATIM
+)
+
+add_custom_target(clownassembler_asm68k_bin DEPENDS ${CLOWNASM_EXE})
+
 # --- Build mdsdrv.bin only if needed ---
 set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
 
@@ -69,6 +87,7 @@ add_custom_command(
     OUTPUT ${MDSDRV_BIN_PATH}
     COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+    DEPENDS ${CLOWNASM_EXE}
     COMMENT "Building mdsdrv.bin"
     VERBATIM
 )
@@ -141,7 +160,7 @@ target_compile_definitions(mmlgui-rng PRIVATE -DLOCAL_LIBVGM)
 
 # Ensure mdsdrv.bin is built before building mmlgui-rng
 # The embedded source file will be generated automatically as a dependency of the source file
-add_dependencies(mmlgui-rng mdsdrv_bin)
+add_dependencies(mmlgui-rng mdsdrv_bin clownassembler_asm68k_bin)
 
 if(CPPUNIT_FOUND)
 	add_executable(mmlgui_unittest
