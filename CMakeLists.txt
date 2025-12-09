@@ -64,13 +64,25 @@ add_subdirectory(libvgm)
 # Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
 # Note: mdsdrv.bin is a cross-compiled binary for the target system, not Windows
 # So we build it using the standard Linux build process (works on Linux/macOS)
-# On Windows, this will use the MSYS2/MinGW environment which provides Linux-like tools
-add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
-	COMMENT "Building mdsdrv.bin"
-	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
-)
+# On Windows/MinGW, we need to pass CC=gcc since salvador Makefile defaults to clang
+if(WIN32 OR MINGW)
+	set(MDSDRV_CC "gcc")
+	# Pass CC as both environment variable and make variable so sub-makes inherit it
+	add_custom_target(mdsdrv_bin
+		COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} mdsdrv
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+		COMMENT "Building mdsdrv.bin (using ${MDSDRV_CC})"
+		BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
+	)
+else()
+	# On Linux/macOS, use standard build (defaults to clang or detected compiler)
+	add_custom_target(mdsdrv_bin
+		COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+		COMMENT "Building mdsdrv.bin"
+		BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
+	)
+endif()
 
 # Generate embedded mdsdrv.bin source file
 set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
