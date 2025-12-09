@@ -85,8 +85,12 @@ endif()
 # Pass CC and YACC as environment variables to ensure sub-makes inherit them
 # Also define WIN32 when _WIN32 is defined (for MinGW/MSYS2 compatibility)
 # This ensures sjdefs.h includes windows.h which defines HANDLE, DWORD, etc.
+# Also override LUA_USE_LINUX with LUA_USE_WINDOWS on Windows to avoid POSIX headers
+# We pass -ULUA_USE_LINUX -DLUA_USE_WINDOWS via CFLAGS_EXTRA, which gets added to CFLAGS
+# Since CFLAGS comes after CPPFLAGS in compiler command line, our -U will undefine
+# the -DLUA_USE_LINUX from CPPFLAGS, and -DLUA_USE_WINDOWS will define the Windows version
 if(WIN32 OR MINGW)
-	set(MDSDRV_CFLAGS_EXTRA "-DWIN32")
+	set(MDSDRV_CFLAGS_EXTRA "-DWIN32 -ULUA_USE_LINUX -DLUA_USE_WINDOWS")
 else()
 	set(MDSDRV_CFLAGS_EXTRA "")
 endif()
