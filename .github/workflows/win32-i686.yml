@@ -28,8 +28,6 @@ jobs:
             mingw-w64-x86_64-glfw
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-pkg-config
-            flex
-            bison
       
       - name: Checkout ctrmml rng-patterns branch
         run: |
@@ -45,25 +43,6 @@ jobs:
           if ! grep -q "#include <cstdint>" core.h; then
             sed -i 's|#include <memory>|#include <memory>\n#include <cstdint>|' core.h
           fi
-      
-      - name: Build mdsdrv.bin
-        run: |
-          cd MDSDRV
-          # Build sjasmplus (define WIN32 for MSYS2/MinGW where _WIN32 is defined but WIN32 might not be)
-          # Add -DWIN32 to CFLAGS_EXTRA (which gets included in CXXFLAGS) to avoid overriding CPPFLAGS
-          make -C sjasmplus CFLAGS_EXTRA="-DWIN32"
-          # Build salvador (override CC to use gcc instead of clang)
-          make -C salvador CC=gcc
-          # Build clownassembler_asm68k (generated parser files are already in repo)
-          make -C clownassembler generators
-          make -C clownassembler clownassembler_asm68k
-          # Copy tools to tools directory (what the Makefile expects)
-          mkdir -p tools
-          cp sjasmplus/build/release/sjasmplus tools/
-          cp salvador/salvador tools/
-          cp clownassembler/clownassembler_asm68k tools/
-          # Build mdsdrv.bin using the Makefile (CC=gcc in case it needs to rebuild anything)
-          CC=gcc make mdsdrv
       
       - name: Configure CMake
         run: |
