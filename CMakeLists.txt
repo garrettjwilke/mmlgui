@@ -83,8 +83,16 @@ else()
 endif()
 
 # Pass CC and YACC as environment variables to ensure sub-makes inherit them
+# Also define WIN32 when _WIN32 is defined (for MinGW/MSYS2 compatibility)
+# This ensures sjdefs.h includes windows.h which defines HANDLE, DWORD, etc.
+if(WIN32 OR MINGW)
+	set(MDSDRV_CFLAGS_EXTRA "-DWIN32")
+else()
+	set(MDSDRV_CFLAGS_EXTRA "")
+endif()
+
 add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" "YACC=${BISON_EXECUTABLE}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} YACC=${BISON_EXECUTABLE} mdsdrv
+	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" "CFLAGS_EXTRA=${MDSDRV_CFLAGS_EXTRA}" "YACC=${BISON_EXECUTABLE}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} CFLAGS_EXTRA="${MDSDRV_CFLAGS_EXTRA}" YACC=${BISON_EXECUTABLE} mdsdrv
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
 	COMMENT "Building mdsdrv.bin (using ${MDSDRV_CC})"
 	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
