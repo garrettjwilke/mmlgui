@@ -49,8 +49,8 @@ jobs:
       - name: Build mdsdrv.bin
         run: |
           cd MDSDRV
-          # Build sjasmplus
-          make -C sjasmplus
+          # Build sjasmplus (define WIN32 for MSYS2/MinGW where _WIN32 is defined but WIN32 might not be)
+          make -C sjasmplus CPPFLAGS="-DWIN32"
           # Build salvador (override CC to use gcc instead of clang)
           make -C salvador CC=gcc
           # Build clownassembler_asm68k (generated parser files are already in repo)
