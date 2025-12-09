@@ -62,10 +62,28 @@ endif()
 add_subdirectory(libvgm)
 
 # Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
+# Determine the C compiler to use for MDSDRV build
+# On Windows/MSYS2, use gcc; otherwise try to use CMAKE_C_COMPILER or default to clang
+if(WIN32 OR MINGW)
+	set(MDSDRV_CC "gcc")
+elseif(CMAKE_C_COMPILER)
+	# Use CMake's detected C compiler
+	get_filename_component(MDSDRV_CC_NAME ${CMAKE_C_COMPILER} NAME)
+	if(MDSDRV_CC_NAME MATCHES "clang")
+		set(MDSDRV_CC "clang")
+	else()
+		set(MDSDRV_CC "gcc")
+	endif()
+else()
+	# Default to clang on Unix-like systems
+	set(MDSDRV_CC "clang")
+endif()
+
+# Pass CC as both environment variable and make variable to ensure sub-makes inherit it
 add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
+	COMMAND ${CMAKE_COMMAND} -E env "CC=${MDSDRV_CC}" ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV CC=${MDSDRV_CC} mdsdrv
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
-	COMMENT "Building mdsdrv.bin"
+	COMMENT "Building mdsdrv.bin (using ${MDSDRV_CC})"
 	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
 )
 
