@@ -61,30 +61,36 @@ endif()
 
 add_subdirectory(libvgm)
 
-# Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
-add_custom_target(mdsdrv_bin
-	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
-	COMMENT "Building mdsdrv.bin"
-	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
+# --- Build mdsdrv.bin only if needed ---
+set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
+
+# Generate mdsdrv.bin if it does not exist or is out of date
+add_custom_command(
+    OUTPUT ${MDSDRV_BIN_PATH}
+    COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+    COMMENT "Building mdsdrv.bin"
+    VERBATIM
 )
 
-# Generate embedded mdsdrv.bin source file
-set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
+# Custom target that depends on the generated binary
+add_custom_target(mdsdrv_bin DEPENDS ${MDSDRV_BIN_PATH})
+
+# --- Embed mdsdrv.bin as C++ source ---
 set(EMBEDDED_MDSDRV_SRC ${CMAKE_BINARY_DIR}/embedded_mdsdrv_bin.cpp)
 
-# Create a custom command that depends on mdsdrv_bin and generates the embedded source
 add_custom_command(
-	OUTPUT ${EMBEDDED_MDSDRV_SRC}
-	COMMAND ${CMAKE_COMMAND} 
-		-DINPUT_FILE=${MDSDRV_BIN_PATH} 
-		-DOUTPUT_FILE=${EMBEDDED_MDSDRV_SRC} 
-		-DVARIABLE_NAME=embedded_mdsdrv_bin_data 
-		-P ${CMAKE_CURRENT_SOURCE_DIR}/embed_binary.cmake
-	DEPENDS mdsdrv_bin
-	COMMENT "Embedding mdsdrv.bin into executable"
-	VERBATIM
+    OUTPUT ${EMBEDDED_MDSDRV_SRC}
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT_FILE=${MDSDRV_BIN_PATH}
+        -DOUTPUT_FILE=${EMBEDDED_MDSDRV_SRC}
+        -DVARIABLE_NAME=embedded_mdsdrv_bin_data
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/embed_binary.cmake
+    DEPENDS ${MDSDRV_BIN_PATH}   # depends on actual file, not the target
+    COMMENT "Embedding mdsdrv.bin into executable"
+    VERBATIM
 )
+
 
 add_library(gui
 	imgui/imgui.cpp
