@@ -61,6 +61,31 @@ endif()
 
 add_subdirectory(libvgm)
 
+# Build mdsdrv.bin from MDSDRV directory (must be built before mmlgui-rng)
+add_custom_target(mdsdrv_bin
+	COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+	COMMENT "Building mdsdrv.bin"
+	BYPRODUCTS ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin
+)
+
+# Generate embedded mdsdrv.bin source file
+set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
+set(EMBEDDED_MDSDRV_SRC ${CMAKE_BINARY_DIR}/embedded_mdsdrv_bin.cpp)
+
+# Create a custom command that depends on mdsdrv_bin and generates the embedded source
+add_custom_command(
+	OUTPUT ${EMBEDDED_MDSDRV_SRC}
+	COMMAND ${CMAKE_COMMAND} 
+		-DINPUT_FILE=${MDSDRV_BIN_PATH} 
+		-DOUTPUT_FILE=${EMBEDDED_MDSDRV_SRC} 
+		-DVARIABLE_NAME=embedded_mdsdrv_bin_data 
+		-P ${CMAKE_CURRENT_SOURCE_DIR}/embed_binary.cmake
+	DEPENDS mdsdrv_bin
+	COMMENT "Embedding mdsdrv.bin into executable"
+	VERBATIM
+)
+
 add_library(gui
 	imgui/imgui.cpp
 	imgui/imgui_demo.cpp
@@ -102,10 +127,15 @@ add_executable(mmlgui-rng
 	src/emu_player.cpp
 	src/config_window.cpp
 	src/dmf_importer.cpp
-	src/miniz.c)
+	src/miniz.c
+	${EMBEDDED_MDSDRV_SRC})
 
 target_link_libraries(mmlgui-rng PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
 target_compile_definitions(mmlgui-rng PRIVATE -DLOCAL_LIBVGM)
+
+# Ensure mdsdrv.bin is built before building mmlgui-rng
+# The embedded source file will be generated automatically as a dependency of the source file
+add_dependencies(mmlgui-rng mdsdrv_bin)
 
 if(CPPUNIT_FOUND)
 	add_executable(mmlgui_unittest

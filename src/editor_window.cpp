@@ -35,6 +35,14 @@
 #include <string>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
+#include <cstdlib>
+#include <sstream>
+#include <iostream>
+
+// Include embedded mdsdrv.bin data
+extern const uint8_t embedded_mdsdrv_bin_data[];
+extern const size_t embedded_mdsdrv_bin_data_size;
 
 enum Flags
 {
@@ -49,6 +57,7 @@ enum Flags
 	RECOMPILE       = 1<<8,
 	EXPORT			= 1<<9,
 	IMPORT			= 1<<10,
+	MDSDRV_EXPORT	= 1<<11,
 };
 
 Editor_Window::Editor_Window()
@@ -108,6 +117,10 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
 			{
 				main_window.show_export_window();
+			}
+			if (ImGui::MenuItem("mdsdrv.bin export...", nullptr, nullptr))
+			{
+				set_flag(MDSDRV_EXPORT|DIALOG);
 			}
 			if (ImGui::MenuItem("PCM tool...", nullptr, nullptr))
 			{
@@ -295,6 +308,28 @@ void Editor_Window::display()
 
 	if(get_close_request() == Window::CLOSE_IN_PROGRESS && !modal_open)
 		show_close_warning();
+
+	// MDSDRV overwrite confirmation popup
+	if (ImGui::BeginPopupModal("Overwrite mdsdrv.bin?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("File already exists:\n%s\n\nOverwrite?", pending_mdsdrv_export_path.c_str());
+		ImGui::Separator();
+
+		if (ImGui::Button("Yes", ImVec2(120, 0)))
+		{
+			export_mdsdrv_bin(pending_mdsdrv_export_path.c_str(), true);
+			pending_mdsdrv_export_path.clear();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("No", ImVec2(120, 0)))
+		{
+			pending_mdsdrv_export_path.clear();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
 
 	if(get_close_request() == Window::CLOSE_OK)
 	{
@@ -533,6 +568,33 @@ void Editor_Window::handle_file_io()
 			clear_flag(IMPORT);
 		}
 	}
+	// mdsdrv.bin export dialog requested
+	else if(test_flag(MDSDRV_EXPORT) && !modal_open)
+	{
+		modal_open = 1;
+		fs.saveFileDialog(test_flag(DIALOG), fs.getLastDirectory(), "mdsdrv.bin", ".bin");
+		clear_flag(DIALOG);
+		if(strlen(fs.getChosenPath()) > 0)
+		{
+			// Check if file exists
+			if(ImGuiFs::FileExists(fs.getChosenPath()))
+			{
+				// File exists, ask for confirmation
+				pending_mdsdrv_export_path = fs.getChosenPath();
+				ImGui::OpenPopup("Overwrite mdsdrv.bin?");
+			}
+			else
+			{
+				// File doesn't exist, proceed with export
+				export_mdsdrv_bin(fs.getChosenPath(), false);
+			}
+			clear_flag(MDSDRV_EXPORT);
+		}
+		else if(fs.hasUserJustCancelledDialog())
+		{
+			clear_flag(MDSDRV_EXPORT);
+		}
+	}
 }
 
 int Editor_Window::load_file(const char* fn)
@@ -608,6 +670,45 @@ void Editor_Window::export_file(const char* fn)
 		player_error += typeid(except).name();
 		player_error += "\nexception message: ";
 		player_error += except.what();
+	}
+}
+
+void Editor_Window::export_mdsdrv_bin(const char* fn, bool overwrite)
+{
+	namespace fs = std::filesystem;
+	
+	try
+	{
+		// Check if file exists and overwrite is not confirmed
+		if (!overwrite && fs::exists(fn))
+		{
+			player_error = "File already exists and overwrite was not confirmed.";
+			return;
+		}
+		
+		// Write embedded binary data to file
+		std::ofstream out_file(fn, std::ios::binary);
+		if (!out_file.good())
+		{
+			player_error = "Cannot open file '" + std::string(fn) + "' for writing.";
+			return;
+		}
+		
+		out_file.write(reinterpret_cast<const char*>(embedded_mdsdrv_bin_data), embedded_mdsdrv_bin_data_size);
+		
+		if (!out_file.good())
+		{
+			player_error = "Failed to write mdsdrv.bin to '" + std::string(fn) + "'.";
+			return;
+		}
+	}
+	catch (const std::exception& except)
+	{
+		player_error = "Exception: " + std::string(except.what());
+	}
+	catch (...)
+	{
+		player_error = "Unknown error occurred while exporting mdsdrv.bin";
 	}
 }
 

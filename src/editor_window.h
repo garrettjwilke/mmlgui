@@ -36,10 +36,11 @@ class Editor_Window : public Window
 		void show_warning();
 		void handle_file_io();
 
-		int load_file(const char* fn);
-		int save_file(const char* fn);
-		void export_file(const char* fn);
-		int import_file(const char* fn);
+	int load_file(const char* fn);
+	int save_file(const char* fn);
+	void export_file(const char* fn);
+	int import_file(const char* fn);
+	void export_mdsdrv_bin(const char* fn, bool overwrite = false);
 
 		std::string get_display_filename() const;
 		std::string get_export_filename() const;
@@ -75,6 +76,9 @@ class Editor_Window : public Window
 		// Song position
 		uint32_t line_pos;
 		uint32_t cursor_pos;
+
+		// MDSDRV export state
+		std::string pending_mdsdrv_export_path;
 };
 
 #endif
