@@ -1,6 +1,41 @@
 cmake_minimum_required(VERSION 3.11)
 project(mmlgui LANGUAGES C CXX)
 
+# --- Check if mdsdrv.bin already exists FIRST (before any other setup) ---
+# If it exists, we skip building clownassembler, sjasmplus, and salvador
+set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
+get_filename_component(MDSDRV_BIN_PATH_ABS ${MDSDRV_BIN_PATH} ABSOLUTE)
+
+# Normalize paths for cross-platform compatibility
+file(TO_CMAKE_PATH "${MDSDRV_BIN_PATH}" MDSDRV_BIN_PATH_NORM)
+file(TO_CMAKE_PATH "${MDSDRV_BIN_PATH_ABS}" MDSDRV_BIN_PATH_ABS_NORM)
+
+# Check if mdsdrv.bin already exists (e.g., checked into git)
+# Try multiple path formats to handle Windows/MSYS2 path issues
+set(MDSDRV_BIN_EXISTS FALSE)
+if(EXISTS "${MDSDRV_BIN_PATH}")
+    set(MDSDRV_BIN_EXISTS TRUE)
+    message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
+    message(STATUS "  Found at: ${MDSDRV_BIN_PATH}")
+elseif(EXISTS "${MDSDRV_BIN_PATH_ABS}")
+    set(MDSDRV_BIN_EXISTS TRUE)
+    message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
+    message(STATUS "  Found at: ${MDSDRV_BIN_PATH_ABS}")
+elseif(EXISTS "${MDSDRV_BIN_PATH_NORM}")
+    set(MDSDRV_BIN_EXISTS TRUE)
+    message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
+    message(STATUS "  Found at: ${MDSDRV_BIN_PATH_NORM}")
+elseif(EXISTS "${MDSDRV_BIN_PATH_ABS_NORM}")
+    set(MDSDRV_BIN_EXISTS TRUE)
+    message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
+    message(STATUS "  Found at: ${MDSDRV_BIN_PATH_ABS_NORM}")
+else()
+    message(STATUS "mdsdrv.bin does not exist, will build clownassembler, sjasmplus, and salvador")
+    message(STATUS "  CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+    message(STATUS "  Checked: ${MDSDRV_BIN_PATH}")
+    message(STATUS "  Checked: ${MDSDRV_BIN_PATH_ABS}")
+endif()
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -65,13 +100,8 @@ add_subdirectory(libvgm)
 set(CLOWNASM_BUILD_DIR ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/build)
 set(CLOWNASM_EXE ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k)
 
-# --- Build mdsdrv.bin only if needed ---
-set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
-
-# Check if mdsdrv.bin already exists (e.g., checked into git)
-if(EXISTS ${MDSDRV_BIN_PATH})
-    message(STATUS "mdsdrv.bin already exists at ${MDSDRV_BIN_PATH}, skipping build of clownassembler, sjasmplus, and salvador")
-    
+# Use the check result from the top of the file
+if(MDSDRV_BIN_EXISTS)
     # Create dummy targets that do nothing - the files already exist
     add_custom_target(clownassembler_asm68k_bin
         COMMENT "Skipping clownassembler_asm68k build (mdsdrv.bin already exists)"
