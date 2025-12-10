@@ -71,7 +71,8 @@ Editor_Window::Editor_Window()
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
 	song_manager = std::make_shared<Song_Manager>();
 	// Set initial palette based on current theme
-	set_editor_palette(main_window.is_light_theme());
+	//set_editor_palette(main_window.is_light_theme());
+	set_editor_palette(true);
 }
 
 void Editor_Window::display()
@@ -114,20 +115,6 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Import patches from DMF...", nullptr, nullptr, !editor.IsReadOnly()))
 				set_flag(IMPORT|DIALOG);
 			show_export_menu();
-			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
-			{
-				main_window.show_export_window();
-			}
-			if (ImGui::MenuItem("mdsdrv.bin export...", nullptr, nullptr))
-			{
-				set_flag(MDSDRV_EXPORT|DIALOG);
-			}
-			if (ImGui::MenuItem("PCM tool...", nullptr, nullptr))
-			{
-				// Get current editor window position and offset for PCM tool
-				ImVec2 offset_pos = ImVec2(350, 50);
-				main_window.show_pcm_tool_window(&offset_pos);
-			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Close", "Ctrl+W"))
 				keep_open = false;
@@ -217,6 +204,25 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("UI Settings..."))
 			{
 				main_window.show_ui_settings_window();
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Tools"))
+		{
+			if (ImGui::MenuItem("PCM tool...", nullptr, nullptr))
+			{
+				// Get current editor window position and offset for PCM tool
+				ImVec2 offset_pos = ImVec2(350, 50);
+				main_window.show_pcm_tool_window(&offset_pos);
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
+			{
+				main_window.show_export_window();
+			}
+			if (ImGui::MenuItem("mdsdrv.bin export...", nullptr, nullptr))
+			{
+				set_flag(MDSDRV_EXPORT|DIALOG);
 			}
 			ImGui::EndMenu();
 		}
