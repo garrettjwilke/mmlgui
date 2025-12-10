@@ -7,6 +7,7 @@
 	path = ImGuiColorTextEdit
 	url = https://github.com/superctr/ImGuiColorTextEdit
 	branch = mmlgui
+	ignore = dirty
 [submodule "ctrmml"]
 	path = ctrmml
 	url = https://github.com/garrettjwilke/ctrmml
