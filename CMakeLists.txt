@@ -68,31 +68,48 @@ set(CLOWNASM_EXE ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler/clownassembler_asm68k
 # --- Build mdsdrv.bin only if needed ---
 set(MDSDRV_BIN_PATH ${CMAKE_SOURCE_DIR}/MDSDRV/out/mdsdrv.bin)
 
-# Build clownassembler_asm68k using CMake (only if mdsdrv.bin doesn't exist)
-# Check at build time using shell conditional - use bash explicitly for MSYS2
-add_custom_command(
-    OUTPUT ${CLOWNASM_EXE}
-    COMMAND bash -c "if [ -f '${MDSDRV_BIN_PATH}' ]; then echo 'mdsdrv.bin exists, skipping clownassembler_asm68k build'; ${CMAKE_COMMAND} -E make_directory '${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler' && ${CMAKE_COMMAND} -E touch '${CLOWNASM_EXE}'; else echo 'mdsdrv.bin does not exist, building clownassembler_asm68k'; ${CMAKE_COMMAND} -E make_directory '${CLOWNASM_BUILD_DIR}' && ${CMAKE_COMMAND} -S '${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler' -B '${CLOWNASM_BUILD_DIR}' && ${CMAKE_COMMAND} --build '${CLOWNASM_BUILD_DIR}' --target clownassembler_asm68k && ${CMAKE_COMMAND} -E copy_if_different '${CLOWNASM_BUILD_DIR}/clownassembler_asm68k' '${CLOWNASM_EXE}'; fi"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler
-    COMMENT "Building clownassembler_asm68k with CMake (if needed)"
-    VERBATIM
-)
+# Check if mdsdrv.bin already exists (e.g., checked into git)
+if(EXISTS ${MDSDRV_BIN_PATH})
+    message(STATUS "mdsdrv.bin already exists at ${MDSDRV_BIN_PATH}, skipping build of clownassembler, sjasmplus, and salvador")
+    
+    # Create dummy targets that do nothing - the files already exist
+    add_custom_target(clownassembler_asm68k_bin
+        COMMENT "Skipping clownassembler_asm68k build (mdsdrv.bin already exists)"
+        VERBATIM
+    )
+    
+    add_custom_target(mdsdrv_bin
+        COMMENT "Skipping mdsdrv.bin build (already exists)"
+        VERBATIM
+    )
+else()
+    # Build clownassembler_asm68k using CMake
+    add_custom_command(
+        OUTPUT ${CLOWNASM_EXE}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CLOWNASM_BUILD_DIR}
+        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler -B ${CLOWNASM_BUILD_DIR}
+        COMMAND ${CMAKE_COMMAND} --build ${CLOWNASM_BUILD_DIR} --target clownassembler_asm68k
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CLOWNASM_BUILD_DIR}/clownassembler_asm68k ${CLOWNASM_EXE}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV/clownassembler
+        COMMENT "Building clownassembler_asm68k with CMake"
+        VERBATIM
+    )
 
-add_custom_target(clownassembler_asm68k_bin DEPENDS ${CLOWNASM_EXE})
+    add_custom_target(clownassembler_asm68k_bin DEPENDS ${CLOWNASM_EXE})
 
-# Generate mdsdrv.bin if it does not exist or is out of date
-# Check at build time using shell conditional
-add_custom_command(
-    OUTPUT ${MDSDRV_BIN_PATH}
-    COMMAND bash -c "if [ -f '${MDSDRV_BIN_PATH}' ]; then echo 'mdsdrv.bin already exists, skipping build'; else echo 'mdsdrv.bin does not exist, building...'; ${CMAKE_MAKE_PROGRAM} -C '${CMAKE_SOURCE_DIR}/MDSDRV' mdsdrv; fi"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
-    DEPENDS ${CLOWNASM_EXE}
-    COMMENT "Building mdsdrv.bin (if needed)"
-    VERBATIM
-)
+    # Generate mdsdrv.bin if it does not exist or is out of date
+    add_custom_command(
+        OUTPUT ${MDSDRV_BIN_PATH}
+        COMMAND ${CMAKE_MAKE_PROGRAM} -C ${CMAKE_SOURCE_DIR}/MDSDRV mdsdrv
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/MDSDRV
+        DEPENDS ${CLOWNASM_EXE}
+        COMMENT "Building mdsdrv.bin"
+        VERBATIM
+    )
 
-# Custom target that depends on the generated binary
-add_custom_target(mdsdrv_bin DEPENDS ${MDSDRV_BIN_PATH})
+    # Custom target that depends on the generated binary
+    add_custom_target(mdsdrv_bin DEPENDS ${MDSDRV_BIN_PATH})
+endif()
 
 # --- Embed mdsdrv.bin as C++ source ---
 set(EMBEDDED_MDSDRV_SRC ${CMAKE_BINARY_DIR}/embedded_mdsdrv_bin.cpp)
