@@ -36,12 +36,31 @@ jobs:
           git fetch origin rng-patterns
           git checkout rng-patterns
       
+      - name: Checkout MDSDRV master branch
+        run: |
+          cd MDSDRV
+          git remote set-url origin https://github.com/garrettjwilke/MDSDRV
+          git fetch origin master
+          git checkout master
+      
       - name: Fix ctrmml core.h missing cstdint include
         run: |
           cd ctrmml/src
           # Add #include <cstdint> after #include <memory> if not already present
           if ! grep -q "#include <cstdint>" core.h; then
             sed -i 's|#include <memory>|#include <memory>\n#include <cstdint>|' core.h
+          fi
+      
+      - name: Check for mdsdrv.bin
+        run: |
+          echo "Checking for mdsdrv.bin..."
+          if [ -f "MDSDRV/out/mdsdrv.bin" ]; then
+            echo "✓ mdsdrv.bin exists at MDSDRV/out/mdsdrv.bin"
+            ls -lh MDSDRV/out/mdsdrv.bin
+          else
+            echo "✗ mdsdrv.bin does NOT exist at MDSDRV/out/mdsdrv.bin"
+            echo "Will need to build clownassembler, sjasmplus, and salvador"
+            ls -la MDSDRV/out/ 2>/dev/null || echo "MDSDRV/out/ directory does not exist"
           fi
       
       - name: Configure CMake

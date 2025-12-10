@@ -13,6 +13,8 @@ file(TO_CMAKE_PATH "${MDSDRV_BIN_PATH_ABS}" MDSDRV_BIN_PATH_ABS_NORM)
 # Check if mdsdrv.bin already exists (e.g., checked into git)
 # Try multiple path formats to handle Windows/MSYS2 path issues
 set(MDSDRV_BIN_EXISTS FALSE)
+
+# First try CMake's EXISTS check with various path formats
 if(EXISTS "${MDSDRV_BIN_PATH}")
     set(MDSDRV_BIN_EXISTS TRUE)
     message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
@@ -30,10 +32,32 @@ elseif(EXISTS "${MDSDRV_BIN_PATH_ABS_NORM}")
     message(STATUS "mdsdrv.bin already exists, skipping build of clownassembler, sjasmplus, and salvador")
     message(STATUS "  Found at: ${MDSDRV_BIN_PATH_ABS_NORM}")
 else()
-    message(STATUS "mdsdrv.bin does not exist, will build clownassembler, sjasmplus, and salvador")
-    message(STATUS "  CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
-    message(STATUS "  Checked: ${MDSDRV_BIN_PATH}")
-    message(STATUS "  Checked: ${MDSDRV_BIN_PATH_ABS}")
+    # Fallback: Use shell command to check (works better on MSYS2/Windows)
+    # Try with bash/sh test command
+    if(UNIX OR MINGW)
+        execute_process(
+            COMMAND sh -c "test -f '${MDSDRV_BIN_PATH}' && echo 'EXISTS' || echo 'NOT_EXISTS'"
+            OUTPUT_VARIABLE SHELL_CHECK_RESULT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(SHELL_CHECK_RESULT STREQUAL "EXISTS")
+            set(MDSDRV_BIN_EXISTS TRUE)
+            message(STATUS "mdsdrv.bin already exists (shell check), skipping build of clownassembler, sjasmplus, and salvador")
+            message(STATUS "  Found at: ${MDSDRV_BIN_PATH}")
+        else()
+            message(STATUS "mdsdrv.bin does not exist, will build clownassembler, sjasmplus, and salvador")
+            message(STATUS "  CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+            message(STATUS "  Checked: ${MDSDRV_BIN_PATH}")
+            message(STATUS "  Checked: ${MDSDRV_BIN_PATH_ABS}")
+            message(STATUS "  Shell check result: ${SHELL_CHECK_RESULT}")
+        endif()
+    else()
+        message(STATUS "mdsdrv.bin does not exist, will build clownassembler, sjasmplus, and salvador")
+        message(STATUS "  CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+        message(STATUS "  Checked: ${MDSDRV_BIN_PATH}")
+        message(STATUS "  Checked: ${MDSDRV_BIN_PATH_ABS}")
+    endif()
 endif()
 
 # Set C++ standard
