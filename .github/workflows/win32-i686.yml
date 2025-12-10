@@ -41,7 +41,9 @@ jobs:
           cd MDSDRV
           git remote set-url origin https://github.com/garrettjwilke/MDSDRV
           git fetch origin master
-          git checkout master
+          git reset --hard HEAD
+          git clean -fd
+          git checkout -f master
       
       - name: Fix ctrmml core.h missing cstdint include
         run: |
