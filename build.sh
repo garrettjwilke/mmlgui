@@ -2,6 +2,10 @@
 
 git submodule update --init --recursive
 
+pushd MDSDRV/sjasmplus
+git checkout master
+popd
+
 if [ -d build ]
 then
   rm -rf build
