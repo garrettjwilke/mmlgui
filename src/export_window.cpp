@@ -17,13 +17,15 @@ Export_Window::Export_Window() : Window(), fs(true, false, true)
 {
 	type = WT_EXPORT;
 	std::string cwd = fs::current_path().string();
-	strncpy(input_path, cwd.c_str(), sizeof(input_path) - 1);
+	strncpy(bgm_path, "musicdata", sizeof(bgm_path) - 1);
+	strncpy(sfx_path, "sfxdata", sizeof(sfx_path) - 1);
 	strncpy(output_path, cwd.c_str(), sizeof(output_path) - 1);
 	strncpy(seq_filename, "mdsseq.bin", sizeof(seq_filename) - 1);
 	strncpy(pcm_filename, "mdspcm.bin", sizeof(pcm_filename) - 1);
 	strncpy(header_filename, "mdsseq.h", sizeof(header_filename) - 1);
 	status_message = "Ready";
-	browse_input = false;
+	browse_bgm = false;
+	browse_sfx = false;
 	browse_output = false;
 }
 
@@ -34,30 +36,50 @@ void Export_Window::display()
 	ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("mdslink export", &active))
 	{
-		ImGui::InputText("Input Directory", input_path, sizeof(input_path));
+		ImGui::InputText("BGM MML Directory", bgm_path, sizeof(bgm_path));
 		ImGui::SameLine();
-		bool trigger_input = ImGui::Button("...##input");
+		bool trigger_bgm = ImGui::Button("...##bgm");
+
+		ImGui::InputText("SFX MML Directory", sfx_path, sizeof(sfx_path));
+		ImGui::SameLine();
+		bool trigger_sfx = ImGui::Button("...##sfx");
 
 		ImGui::InputText("Output Directory", output_path, sizeof(output_path));
 		ImGui::SameLine();
 		bool trigger_output = ImGui::Button("...##output");
 		
-		if (trigger_input) {
-			browse_input = true;
+		if (trigger_bgm) {
+			browse_bgm = true;
+			browse_sfx = false;
+			browse_output = false;
+		}
+		if (trigger_sfx) {
+			browse_bgm = false;
+			browse_sfx = true;
 			browse_output = false;
 		}
 		if (trigger_output) {
+			browse_bgm = false;
+			browse_sfx = false;
 			browse_output = true;
-			browse_input = false;
 		}
 
-		if (browse_input) {
-			const char* path = fs.chooseFolderDialog(trigger_input, input_path);
+		if (browse_bgm) {
+			const char* path = fs.chooseFolderDialog(trigger_bgm, bgm_path);
 			if (strlen(path) > 0) {
-				strncpy(input_path, path, sizeof(input_path) - 1);
-				browse_input = false;
+				strncpy(bgm_path, path, sizeof(bgm_path) - 1);
+				browse_bgm = false;
 			} else if (fs.hasUserJustCancelledDialog()) {
-				browse_input = false;
+				browse_bgm = false;
+			}
+		}
+		else if (browse_sfx) {
+			const char* path = fs.chooseFolderDialog(trigger_sfx, sfx_path);
+			if (strlen(path) > 0) {
+				strncpy(sfx_path, path, sizeof(sfx_path) - 1);
+				browse_sfx = false;
+			} else if (fs.hasUserJustCancelledDialog()) {
+				browse_sfx = false;
 			}
 		}
 		else if (browse_output) {
@@ -112,24 +134,42 @@ void Export_Window::run_export()
 	std::vector<std::string> input_files;
 	
 	try {
-		if (!fs::exists(input_path) || !fs::is_directory(input_path)) {
-			status_message = "Invalid input directory";
+		// Search BGM directory
+		if (fs::exists(bgm_path) && fs::is_directory(bgm_path)) {
+			for (const auto& entry : fs::recursive_directory_iterator(bgm_path)) {
+				if (entry.is_regular_file()) {
+					std::string path = entry.path().string();
+					std::string ext = entry.path().extension().string();
+					// Check for .mml or .mds extension (case insensitive)
+					if (iequal(ext, ".mml") || iequal(ext, ".mds")) {
+						input_files.push_back(path);
+					}
+				}
+			}
+		} else if (strlen(bgm_path) > 0) {
+			status_message = "Invalid BGM directory: " + std::string(bgm_path);
 			return;
 		}
 
-		for (const auto& entry : fs::recursive_directory_iterator(input_path)) {
-			if (entry.is_regular_file()) {
-				std::string path = entry.path().string();
-				std::string ext = entry.path().extension().string();
-				// Check for .mml or .mds extension (case insensitive)
-				if (iequal(ext, ".mml") || iequal(ext, ".mds")) {
-					input_files.push_back(path);
+		// Search SFX directory
+		if (fs::exists(sfx_path) && fs::is_directory(sfx_path)) {
+			for (const auto& entry : fs::recursive_directory_iterator(sfx_path)) {
+				if (entry.is_regular_file()) {
+					std::string path = entry.path().string();
+					std::string ext = entry.path().extension().string();
+					// Check for .mml or .mds extension (case insensitive)
+					if (iequal(ext, ".mml") || iequal(ext, ".mds")) {
+						input_files.push_back(path);
+					}
 				}
 			}
+		} else if (strlen(sfx_path) > 0) {
+			status_message = "Invalid SFX directory: " + std::string(sfx_path);
+			return;
 		}
 		
 		if (input_files.empty()) {
-			status_message = "No .mml or .mds files found in input directory.";
+			status_message = "No .mml or .mds files found in BGM or SFX directories.";
 			return;
 		}
 

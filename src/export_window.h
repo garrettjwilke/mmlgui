@@ -12,7 +12,8 @@ class Export_Window : public Window
 		void display() override;
 
 	private:
-		char input_path[1024];
+		char bgm_path[1024];
+		char sfx_path[1024];
 		char output_path[1024];
 		char seq_filename[256];
 		char pcm_filename[256];
@@ -23,7 +24,8 @@ class Export_Window : public Window
 		void run_export();
 
 		ImGuiFs::Dialog fs;
-		bool browse_input;
+		bool browse_bgm;
+		bool browse_sfx;
 		bool browse_output;
 };
 
