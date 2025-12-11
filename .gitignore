@@ -8,6 +8,5 @@ doxygen
 imgui.ini
 mmlgui
 mmlgui-rng
-ctrmml/*
 *.wav
 *.mp3
