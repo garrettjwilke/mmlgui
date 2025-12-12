@@ -29,13 +29,6 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-pkg-config
       
-      - name: Checkout ctrmml rng-patterns branch
-        run: |
-          cd ctrmml
-          git remote set-url origin https://github.com/garrettjwilke/ctrmml
-          git fetch origin rng-patterns
-          git checkout rng-patterns
-      
       - name: Checkout MDSDRV master branch
         run: |
           cd MDSDRV
