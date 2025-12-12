@@ -2,20 +2,16 @@
 	path = imgui
 	url = https://github.com/Flix01/imgui
 	branch = imgui_with_addons
-	ignore = dirty
 [submodule "ImGuiColorTextEdit"]
 	path = ImGuiColorTextEdit
 	url = https://github.com/superctr/ImGuiColorTextEdit
 	branch = mmlgui
-	ignore = dirty
 [submodule "ctrmml"]
 	path = ctrmml
 	url = https://github.com/garrettjwilke/ctrmml
-	branch = rng-patterns
 [submodule "libvgm"]
 	path = libvgm
 	url = https://github.com/ValleyBell/libvgm
 [submodule "MDSDRV"]
 	path = MDSDRV
 	url = https://github.com/garrettjwilke/MDSDRV
-	ignore = dirty
