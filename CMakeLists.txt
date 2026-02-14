@@ -199,6 +199,7 @@ target_include_directories(gui PUBLIC
 	ImGuiColorTextEdit
 	${GLFW3_INCLUDE_DIRS})
 
+target_link_directories(gui PUBLIC ${GLFW3_LIBRARY_DIRS})
 target_link_libraries(gui PUBLIC OpenGL::GL ${GLFW3_LIBRARIES})
 target_compile_definitions(gui PUBLIC -DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 
