@@ -10,9 +10,11 @@
 [submodule "ctrmml"]
 	path = ctrmml
 	url = https://github.com/garrettjwilke/ctrmml
+	branch = ssdpcm
 [submodule "libvgm"]
 	path = libvgm
 	url = https://github.com/ValleyBell/libvgm
 [submodule "MDSDRV"]
 	path = MDSDRV
 	url = https://github.com/garrettjwilke/MDSDRV
+	branch = ssdpcm

@@ -93,19 +93,19 @@ else()
 	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" OFF)
 endif()
 
-# Ensure ctrmml is on the rng-patterns branch before building
+# Ensure ctrmml is on the ssdpcm branch before building
 if(EXISTS "${CMAKE_SOURCE_DIR}/ctrmml/.git")
 	execute_process(
-		COMMAND git checkout rng-patterns
+		COMMAND git checkout ssdpcm
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ctrmml
 		RESULT_VARIABLE git_result
 		OUTPUT_QUIET
 		ERROR_QUIET
 	)
 	if(git_result EQUAL 0)
-		message(STATUS "Checked out rng-patterns branch in ctrmml")
+		message(STATUS "Checked out ssdpcm branch in ctrmml")
 	else()
-		message(WARNING "Failed to checkout rng-patterns branch in ctrmml (result: ${git_result})")
+		message(WARNING "Failed to checkout ssdpcm branch in ctrmml (result: ${git_result})")
 	endif()
 endif()
 
@@ -208,7 +208,7 @@ if(APPLE)
 	target_link_libraries(gui PUBLIC "-framework CoreFoundation")
 endif()
 
-add_executable(mmlgui-rng
+add_executable(mmlgui-ssd
 	src/main.cpp
 	src/window.cpp
 	src/main_window.cpp
@@ -226,12 +226,12 @@ add_executable(mmlgui-rng
 	src/miniz.c
 	${EMBEDDED_MDSDRV_SRC})
 
-target_link_libraries(mmlgui-rng PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
-target_compile_definitions(mmlgui-rng PRIVATE -DLOCAL_LIBVGM)
+target_link_libraries(mmlgui-ssd PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
+target_compile_definitions(mmlgui-ssd PRIVATE -DLOCAL_LIBVGM)
 
-# Ensure mdsdrv.bin is built before building mmlgui-rng
+# Ensure mdsdrv.bin is built before building mmlgui-ssd
 # The embedded source file will be generated automatically as a dependency of the source file
-add_dependencies(mmlgui-rng mdsdrv_bin clownassembler_asm68k_bin)
+add_dependencies(mmlgui-ssd mdsdrv_bin clownassembler_asm68k_bin)
 
 if(CPPUNIT_FOUND)
 	add_executable(mmlgui_unittest

@@ -11,9 +11,9 @@ then
   rm -rf build
 fi
 
-if [ -f mmlgui-rng ]
+if [ -f mmlgui-ssd ]
 then
-  rm mmlgui-rng
+  rm mmlgui-ssd
 fi
 
 mkdir build
@@ -28,10 +28,10 @@ fi
 
 cmake --build .
 
-if [ -f mmlgui-rng ]
+if [ -f mmlgui-ssd ]
 then
-  mv mmlgui-rng ../
-  echo "build success! run ./mmlgui-rng"
+  mv mmlgui-ssd ../
+  echo "build success! run ./mmlgui-ssd"
 else
   echo "build failed"
 fi

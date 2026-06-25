@@ -7,6 +7,6 @@ doxygen
 *.exe
 imgui.ini
 mmlgui
-mmlgui-rng
+mmlgui-ssd
 *.wav
 *.mp3
