@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git submodule update --init --recursive
+git submodule update --init
 
 pushd MDSDRV/sjasmplus
 git checkout master
