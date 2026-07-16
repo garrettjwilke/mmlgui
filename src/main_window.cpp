@@ -387,7 +387,7 @@ void Main_Window::display()
 		{
 			children.push_back(std::make_shared<Editor_Window>());
 		}
-		if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
+		if (ImGui::MenuItem("mdslink-ssdpcm export...", nullptr, nullptr))
 		{
 			show_export_window();
 		}

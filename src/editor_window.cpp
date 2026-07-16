@@ -216,7 +216,7 @@ void Editor_Window::display()
 				main_window.show_pcm_tool_window(&offset_pos);
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem("mdslink export...", nullptr, nullptr))
+			if (ImGui::MenuItem("mdslink-ssdpcm export...", nullptr, nullptr))
 			{
 				main_window.show_export_window();
 			}

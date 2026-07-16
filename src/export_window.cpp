@@ -34,7 +34,7 @@ void Export_Window::display()
 	if (!active) return;
 
 	ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("mdslink export", &active))
+	if (ImGui::Begin("mdslink-ssdpcm export", &active))
 	{
 		ImGui::InputText("BGM MML Directory", bgm_path, sizeof(bgm_path));
 		ImGui::SameLine();
