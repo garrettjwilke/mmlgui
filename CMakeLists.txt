@@ -93,19 +93,19 @@ else()
 	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" OFF)
 endif()
 
-# Ensure ctrmml is on the ssdpcm branch before building
+# Ensure ctrmml is on the ssdpcm-fix branch before building
 if(EXISTS "${CMAKE_SOURCE_DIR}/ctrmml/.git")
 	execute_process(
-		COMMAND git checkout ssdpcm
+		COMMAND git checkout ssdpcm-fix
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ctrmml
 		RESULT_VARIABLE git_result
 		OUTPUT_QUIET
 		ERROR_QUIET
 	)
 	if(git_result EQUAL 0)
-		message(STATUS "Checked out ssdpcm branch in ctrmml")
+		message(STATUS "Checked out ssdpcm-fix branch in ctrmml")
 	else()
-		message(WARNING "Failed to checkout ssdpcm branch in ctrmml (result: ${git_result})")
+		message(WARNING "Failed to checkout ssdpcm-fix branch in ctrmml (result: ${git_result})")
 	endif()
 endif()
 

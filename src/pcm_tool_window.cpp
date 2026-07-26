@@ -513,7 +513,7 @@ void PCM_Tool_Window::display()
             }
             
             ImGui::Separator();
-            bool save_clicked = ImGui::Button("Export (17.5kHz Mono s16le)...");
+            bool save_clicked = ImGui::Button("Export (17kHz Mono s16le)...");
             if (save_clicked)
             {
                 stop_preview(); // Stop any playing preview before exporting
@@ -898,7 +898,7 @@ void PCM_Tool_Window::resample_and_save(const char* filename)
 {
     if (pcm_data.empty()) return;
 
-    int target_rate = 17500;
+    int target_rate = 17000;
     
     // We already have mono data in pcm_data
     // 1. Extract selection
@@ -963,7 +963,7 @@ void PCM_Tool_Window::resample_and_save(const char* filename)
         uint32_t fmtSize = 16;
         uint16_t audioFormat = 1; // PCM
         uint16_t numChannels = 1;
-        uint32_t sampleRate = 17500;
+        uint32_t sampleRate = 17000;
         uint32_t byteRate = sampleRate * numChannels * sizeof(short);
         uint16_t blockAlign = numChannels * sizeof(short);
         uint16_t bitsPerSample = 16;
@@ -995,7 +995,7 @@ void PCM_Tool_Window::resample_and_save_slices(const char* base_filename)
         return;
     }
 
-    int target_rate = 17500;
+    int target_rate = 17000;
     
     // 1. Extract selection
     if (start_point < 0) start_point = 0;
@@ -1084,7 +1084,7 @@ void PCM_Tool_Window::resample_and_save_slices(const char* base_filename)
             uint32_t fmtSize = 16;
             uint16_t audioFormat = 1; // PCM
             uint16_t numChannels = 1;
-            uint32_t sampleRate = 17500;
+            uint32_t sampleRate = 17000;
             uint32_t byteRate = sampleRate * numChannels * sizeof(short);
             uint16_t blockAlign = numChannels * sizeof(short);
             uint16_t bitsPerSample = 16;
@@ -1132,7 +1132,7 @@ void PCM_Tool_Window::export_to_new_window()
         return;
     }
 
-    int target_rate = 17500;
+    int target_rate = 17000;
     
     // 1. Extract selection
     if (start_point < 0) start_point = 0;
